@@ -1,34 +1,205 @@
-.App-logo {
-    height: 40vmin;
-    pointer-events: none;
+/* SanoTracking.AI Custom Styles */
+
+/* Gauge animations */
+@keyframes gauge-fill {
+  from {
+    stroke-dasharray: 0 251.2;
+  }
 }
 
-@media (prefers-reduced-motion: no-preference) {
-    .App-logo {
-        animation: App-logo-spin infinite 20s linear;
-    }
+/* Pulse animation for loading */
+@keyframes pulse-loading {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.05);
+    opacity: 0.8;
+  }
 }
 
-.App-header {
-    background-color: #0f0f10;
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    font-size: calc(10px + 2vmin);
-    color: white;
+/* Scanning effect */
+@keyframes scanning {
+  0% {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(100%);
+    opacity: 0;
+  }
 }
 
-.App-link {
-    color: #61dafb;
+/* Card hover effects */
+.glass-card {
+  transition: all 0.3s ease;
 }
 
-@keyframes App-logo-spin {
-    from {
-        transform: rotate(0deg);
-    }
-    to {
-        transform: rotate(360deg);
-    }
+.glass-card:hover {
+  transform: translateY(-2px);
 }
+
+/* Progress bar custom styles */
+.progress-glow {
+  box-shadow: 0 0 10px currentColor;
+}
+
+/* Tab active indicator */
+[data-state="active"] {
+  background: linear-gradient(135deg, rgba(14, 165, 233, 0.2), rgba(16, 185, 129, 0.1));
+}
+
+/* Metric card animations */
+.metric-card {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.metric-card:hover {
+  transform: scale(1.02);
+  box-shadow: 0 0 20px rgba(14, 165, 233, 0.2);
+}
+
+/* Custom scrollbar for dark theme */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 3px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(14, 165, 233, 0.3);
+  border-radius: 3px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(14, 165, 233, 0.5);
+}
+
+/* Heat map overlay styles */
+.heatmap-overlay {
+  mix-blend-mode: multiply;
+  opacity: 0.7;
+}
+
+/* Saliency mask styles */
+.saliency-mask {
+  filter: contrast(1.2);
+}
+
+/* Badge glow effects */
+.badge-glow-red {
+  box-shadow: 0 0 10px rgba(239, 68, 68, 0.5);
+}
+
+.badge-glow-yellow {
+  box-shadow: 0 0 10px rgba(234, 179, 8, 0.5);
+}
+
+.badge-glow-green {
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.5);
+}
+
+.badge-glow-emerald {
+  box-shadow: 0 0 15px rgba(52, 211, 153, 0.6);
+}
+
+/* Confetti z-index */
+canvas {
+  z-index: 100 !important;
+  pointer-events: none;
+}
+
+/* Loading overlay backdrop */
+.loading-backdrop {
+  backdrop-filter: blur(8px);
+}
+
+/* Tracing beam effect */
+.tracing-beam::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #0EA5E9, transparent);
+  animation: scanning 2s ease-in-out infinite;
+}
+
+/* Score tier backgrounds */
+.tier-critical {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.1), transparent);
+}
+
+.tier-borderline {
+  background: linear-gradient(135deg, rgba(234, 179, 8, 0.1), transparent);
+}
+
+.tier-success {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), transparent);
+}
+
+.tier-excellent {
+  background: linear-gradient(135deg, rgba(52, 211, 153, 0.15), transparent);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .gauge-container {
+    transform: scale(0.8);
+  }
+  
+  .kpi-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* Animation utilities */
+.animate-fade-in {
+  animation: fadeIn 0.5s ease-out forwards;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-slide-up {
+  animation: slideUp 0.6s ease-out forwards;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Stagger children animation */
+.stagger-children > * {
+  opacity: 0;
+  animation: fadeIn 0.5s ease-out forwards;
+}
+
+.stagger-children > *:nth-child(1) { animation-delay: 0.1s; }
+.stagger-children > *:nth-child(2) { animation-delay: 0.2s; }
+.stagger-children > *:nth-child(3) { animation-delay: 0.3s; }
+.stagger-children > *:nth-child(4) { animation-delay: 0.4s; }
+.stagger-children > *:nth-child(5) { animation-delay: 0.5s; }
