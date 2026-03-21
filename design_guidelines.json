@@ -1,0 +1,166 @@
+{
+  "project_name": "SanoTracking.AI",
+  "theme_strategy": {
+    "mode": "dark",
+    "emotional_archetype": "ARCHETYPE 2: THE PERFORMANCE PRO (Elite Athleticism & Precision)",
+    "description": "A high-stakes, authoritative, scientific neuromarketing dashboard. Dark mode is mandatory for the 'tech/medical' feel and to make heatmaps pop. The UI should feel like a medical imaging device interface."
+  },
+  "typography": {
+    "headings": {
+      "font_family": "Manrope",
+      "weights": ["600", "700", "800"],
+      "usage": "All section titles, modal headers, and SanoScore display.",
+      "letter_spacing": "tracking-tight"
+    },
+    "body": {
+      "font_family": "Inter",
+      "weights": ["400", "500"],
+      "usage": "General text, descriptions, recommendations."
+    },
+    "data": {
+      "font_family": "JetBrains Mono",
+      "weights": ["500"],
+      "usage": "KPI numbers, coordinates, technical metrics."
+    }
+  },
+  "colors": {
+    "palette": {
+      "background": {
+        "default": "#020408", 
+        "paper": "#0B101B",
+        "surface": "#121926"
+      },
+      "text": {
+        "primary": "#F8FAFC",
+        "secondary": "#94A3B8",
+        "muted": "#475569"
+      },
+      "brand": {
+        "primary": "#0EA5E9",
+        "secondary": "#10B981",
+        "accent": "#F43F5E",
+        "glow": "rgba(14, 165, 233, 0.5)"
+      },
+      "heatmap": {
+        "hot": "#EF4444",
+        "warm": "#EAB308",
+        "cool": "#3B82F6",
+        "cold": "#6366F1"
+      },
+      "status": {
+        "success": "#10B981",
+        "warning": "#F59E0B",
+        "error": "#EF4444",
+        "info": "#3B82F6"
+      }
+    },
+    "gradients": {
+      "hero_glow": "radial-gradient(circle at 50% 0%, rgba(14, 165, 233, 0.15) 0%, transparent 60%)",
+      "tracing_beam": "linear-gradient(90deg, transparent, #0EA5E9, transparent)",
+      "score_gauge": "conic-gradient(from 180deg at 50% 50%, #EF4444 0deg, #EAB308 60deg, #10B981 120deg, #10B981 180deg)"
+    }
+  },
+  "spacing_system": {
+    "base_scale": 4,
+    "container_padding": "p-6 md:p-8 lg:p-10",
+    "section_gap": "gap-8",
+    "border_radius": {
+      "card": "rounded-xl",
+      "button": "rounded-md",
+      "input": "rounded-md"
+    }
+  },
+  "grid_layouts": {
+    "dashboard": "grid-cols-1 md:grid-cols-12 gap-6",
+    "heatmap_section": "col-span-12 lg:col-span-8 row-span-2",
+    "score_panel": "col-span-12 md:col-span-6 lg:col-span-4",
+    "kpi_grid": "grid-cols-2 gap-4",
+    "recommendations": "col-span-12 lg:col-span-4"
+  },
+  "components": {
+    "buttons": {
+      "primary": "bg-primary text-primary-foreground hover:bg-primary/90 shadow-[0_0_15px_rgba(14,165,233,0.3)] transition-all",
+      "secondary": "bg-secondary/20 text-secondary-foreground hover:bg-secondary/30 border border-secondary/50",
+      "ghost": "hover:bg-accent hover:text-accent-foreground"
+    },
+    "cards": {
+      "style": "bg-background/40 backdrop-blur-md border border-white/10 shadow-lg",
+      "hover": "hover:border-primary/50 transition-colors duration-300"
+    },
+    "inputs": {
+      "style": "bg-background/50 border-white/10 focus:border-primary focus:ring-1 focus:ring-primary"
+    },
+    "sano_gauge": {
+      "type": "custom_svg_framer_motion",
+      "description": "Semi-circle gauge with animated needle and gradient track. Score number in center with glow."
+    },
+    "heatmap_overlay": {
+      "description": "Image container with absolute positioned canvas/div for heatmap gradient overlay. Opacity slider control."
+    }
+  },
+  "visual_enhancers": {
+    "glassmorphism": "backdrop-blur-xl bg-black/40 border border-white/10",
+    "neon_glow": "shadow-[0_0_20px_rgba(14,165,233,0.15)]",
+    "grid_background": "bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px]",
+    "confetti": "react-confetti for high scores (>80)"
+  },
+  "motion": {
+    "page_load": {
+      "initial": { "opacity": 0, "y": 20 },
+      "animate": { "opacity": 1, "y": 0 },
+      "transition": { "duration": 0.5, "ease": "easeOut" }
+    },
+    "hover_lift": {
+      "scale": 1.02,
+      "transition": { "duration": 0.2 }
+    },
+    "loading_state": {
+      "text": "Analiz Ediliyor...",
+      "animation": "Pulse effect on brain icon or progress bar filling with 'neuro-metrics' text cycling"
+    }
+  },
+  "icons": {
+    "library": "lucide-react",
+    "mapping": {
+      "upload": "UploadCloud",
+      "brain": "BrainCircuit",
+      "chart": "BarChart3",
+      "history": "History",
+      "settings": "Settings",
+      "download": "Download",
+      "compare": "ArrowLeftRight",
+      "eye": "Eye",
+      "alert": "AlertTriangle",
+      "check": "CheckCircle2"
+    }
+  },
+  "images": {
+    "placeholder_doctor": "https://images.pexels.com/photos/5215009/pexels-photo-5215009.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+    "placeholder_lab": "https://images.pexels.com/photos/6183247/pexels-photo-6183247.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+    "hero_bg": "Abstract neuro-network or dark gradient mesh"
+  },
+  "text_content": {
+    "language": "tr",
+    "slogan": "Nöromarketing ile Reklamlarınızın Bilinçaltı Etkisini Ölçün",
+    "upload_cta": "Görseli Analiz Et",
+    "loading_text": "Yapay Zeka Görseli İşliyor...",
+    "score_label": "SanoScore",
+    "recommendations_title": "Yapay Zeka Önerileri"
+  },
+  "universal_guidelines": [
+    "Always use 'dark' class on the html/body element.",
+    "Do not use generic 'Inter' for headings. Use 'Manrope' or 'Work Sans'.",
+    "Ensure 3:1 contrast ratio for all text.",
+    "Use 'sonner' for toast notifications.",
+    "Components must use named exports.",
+    "Add data-testid to all interactive elements."
+  ],
+  "instructions_to_main_agent": [
+    "1. Setup global dark mode in index.css.",
+    "2. Install 'lucide-react', 'recharts', 'framer-motion', 'react-confetti' if not present.",
+    "3. Create the 'Bento' grid layout for the main dashboard.",
+    "4. Implement the SanoScore gauge with Framer Motion.",
+    "5. Build the comparison view with a slider or side-by-side cards.",
+    "6. Ensure all text is in Turkish."
+  ]
+}
