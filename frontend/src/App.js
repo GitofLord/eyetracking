@@ -365,12 +365,13 @@ const TermsKPIsModal = () => (
         Terimler & KPI'lar
       </Button>
     </DialogTrigger>
-    <DialogContent className="max-w-4xl max-h-[85vh] overflow-hidden bg-[#0B101B] border-white/10">
+    <DialogContent className="max-w-4xl max-h-[85vh] overflow-hidden bg-[#0B101B] border-white/10" aria-describedby="terms-kpis-description">
       <DialogHeader>
         <DialogTitle className="text-2xl flex items-center gap-3 text-white">
           <BrainCircuit className="w-7 h-7 text-[#0EA5E9]" />
           {EYE_TRACKING_CONTENT.title}
         </DialogTitle>
+        <p id="terms-kpis-description" className="sr-only">Göz takibi ve nöromarketing terimler sözlüğü</p>
       </DialogHeader>
       <ScrollArea className="h-[70vh] pr-4">
         <div className="space-y-8 pb-6">
