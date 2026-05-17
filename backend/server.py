@@ -372,6 +372,180 @@ async def delete_analysis(analysis_id: str):
     
     return {"message": "Analiz silindi", "id": analysis_id}
 
+# A/B Test Comparison Models
+class ABComparisonRequest(BaseModel):
+    analysis_id_a: str
+    analysis_id_b: str
+
+class ABComparisonResponse(BaseModel):
+    winner: str  # "A", "B", or "TIE"
+    score_difference: int
+    analysis_a: dict
+    analysis_b: dict
+    comparison_summary: str
+    metric_comparisons: List[dict]
+
+@api_router.post("/compare", response_model=ABComparisonResponse)
+async def compare_analyses(request: ABComparisonRequest):
+    """Compare two analyses for A/B testing"""
+    # Fetch both analyses
+    analysis_a = await db.analyses.find_one(
+        {"id": request.analysis_id_a},
+        {"_id": 0, "image_base64": 0}
+    )
+    analysis_b = await db.analyses.find_one(
+        {"id": request.analysis_id_b},
+        {"_id": 0, "image_base64": 0}
+    )
+    
+    if not analysis_a:
+        raise HTTPException(status_code=404, detail="Analiz A bulunamadı")
+    if not analysis_b:
+        raise HTTPException(status_code=404, detail="Analiz B bulunamadı")
+    
+    # Calculate comparison
+    score_a = analysis_a.get('sano_score', 0)
+    score_b = analysis_b.get('sano_score', 0)
+    score_diff = abs(score_a - score_b)
+    
+    if score_a > score_b:
+        winner = "A"
+    elif score_b > score_a:
+        winner = "B"
+    else:
+        winner = "TIE"
+    
+    # Metric comparisons
+    metrics = [
+        {"name": "SanoScore", "a": score_a, "b": score_b, "winner": "A" if score_a > score_b else ("B" if score_b > score_a else "TIE")},
+        {"name": "Güven Faktörü", "a": analysis_a.get('trust_factor', 0), "b": analysis_b.get('trust_factor', 0), "winner": "A" if analysis_a.get('trust_factor', 0) > analysis_b.get('trust_factor', 0) else ("B" if analysis_b.get('trust_factor', 0) > analysis_a.get('trust_factor', 0) else "TIE")},
+        {"name": "Regülasyon", "a": analysis_a.get('regulatory_visibility', 0), "b": analysis_b.get('regulatory_visibility', 0), "winner": "A" if analysis_a.get('regulatory_visibility', 0) > analysis_b.get('regulatory_visibility', 0) else ("B" if analysis_b.get('regulatory_visibility', 0) > analysis_a.get('regulatory_visibility', 0) else "TIE")},
+        {"name": "CTA Odak", "a": analysis_a.get('cta_focus', 0), "b": analysis_b.get('cta_focus', 0), "winner": "A" if analysis_a.get('cta_focus', 0) > analysis_b.get('cta_focus', 0) else ("B" if analysis_b.get('cta_focus', 0) > analysis_a.get('cta_focus', 0) else "TIE")},
+        {"name": "TTFF", "a": analysis_a.get('ttff_medical_claims', 0), "b": analysis_b.get('ttff_medical_claims', 0), "winner": "A" if analysis_a.get('ttff_medical_claims', 0) < analysis_b.get('ttff_medical_claims', 0) else ("B" if analysis_b.get('ttff_medical_claims', 0) < analysis_a.get('ttff_medical_claims', 0) else "TIE"), "lower_is_better": True},
+    ]
+    
+    # Generate AI comparison summary
+    try:
+        chat = LlmChat(
+            api_key=EMERGENT_LLM_KEY,
+            session_id=f"compare-{uuid.uuid4()}",
+            system_message="Sen bir ilaç sektörü nöromarketing uzmanısın. İki görselin karşılaştırmasını yap."
+        ).with_model("gemini", "gemini-3-flash-preview")
+        
+        comparison_prompt = f"""İki ilaç reklamını karşılaştır ve hangisinin daha etkili olduğunu açıkla.
+
+Görsel A ({analysis_a.get('image_name', 'A')}):
+- SanoScore: {score_a}
+- Güven Faktörü: {analysis_a.get('trust_factor', 0)}%
+- Regülasyon: {analysis_a.get('regulatory_visibility', 0)}%
+- CTA Odak: {analysis_a.get('cta_focus', 0)}%
+- Bilişsel Yük: {analysis_a.get('cognitive_load', 'Orta')}
+
+Görsel B ({analysis_b.get('image_name', 'B')}):
+- SanoScore: {score_b}
+- Güven Faktörü: {analysis_b.get('trust_factor', 0)}%
+- Regülasyon: {analysis_b.get('regulatory_visibility', 0)}%
+- CTA Odak: {analysis_b.get('cta_focus', 0)}%
+- Bilişsel Yük: {analysis_b.get('cognitive_load', 'Orta')}
+
+3-4 cümle ile karşılaştırma özeti yaz. Hangi görselin neden daha iyi performans gösterdiğini açıkla."""
+
+        msg = UserMessage(text=comparison_prompt)
+        summary = await chat.send_message(msg)
+    except Exception as e:
+        logger.error(f"Error generating comparison summary: {str(e)}")
+        summary = f"Görsel {'A' if winner == 'A' else 'B'}, {score_diff} puan farkla daha yüksek SanoScore'a sahip."
+    
+    return ABComparisonResponse(
+        winner=winner,
+        score_difference=score_diff,
+        analysis_a=analysis_a,
+        analysis_b=analysis_b,
+        comparison_summary=summary,
+        metric_comparisons=metrics
+    )
+
+# Competitor Benchmark Data
+COMPETITOR_BENCHMARKS = {
+    "pfizer": {"name": "Pfizer", "avg_score": 82, "trust": 85, "regulatory": 90, "cta": 75},
+    "novartis": {"name": "Novartis", "avg_score": 79, "trust": 80, "regulatory": 85, "cta": 72},
+    "roche": {"name": "Roche", "avg_score": 81, "trust": 82, "regulatory": 88, "cta": 74},
+    "johnson": {"name": "Johnson & Johnson", "avg_score": 78, "trust": 80, "regulatory": 82, "cta": 73},
+    "abbvie": {"name": "AbbVie", "avg_score": 77, "trust": 78, "regulatory": 80, "cta": 74},
+    "merck": {"name": "Merck", "avg_score": 80, "trust": 82, "regulatory": 86, "cta": 73},
+    "gsk": {"name": "GSK", "avg_score": 76, "trust": 78, "regulatory": 84, "cta": 68},
+    "sanofi": {"name": "Sanofi", "avg_score": 75, "trust": 76, "regulatory": 82, "cta": 68},
+    "astrazeneca": {"name": "AstraZeneca", "avg_score": 79, "trust": 81, "regulatory": 85, "cta": 72},
+    "bayer": {"name": "Bayer", "avg_score": 74, "trust": 75, "regulatory": 80, "cta": 68}
+}
+
+class CompetitorComparisonResponse(BaseModel):
+    analysis_score: int
+    competitors: List[dict]
+    ranking: int
+    percentile: float
+    summary: str
+
+@api_router.get("/competitor-benchmark/{analysis_id}", response_model=CompetitorComparisonResponse)
+async def get_competitor_benchmark(analysis_id: str):
+    """Compare an analysis against industry competitor benchmarks"""
+    analysis = await db.analyses.find_one(
+        {"id": analysis_id},
+        {"_id": 0, "sano_score": 1, "trust_factor": 1, "regulatory_visibility": 1, "cta_focus": 1, "image_name": 1}
+    )
+    
+    if not analysis:
+        raise HTTPException(status_code=404, detail="Analiz bulunamadı")
+    
+    user_score = analysis.get('sano_score', 0)
+    
+    # Build competitor list with comparison
+    competitors = []
+    for key, comp in COMPETITOR_BENCHMARKS.items():
+        diff = user_score - comp['avg_score']
+        competitors.append({
+            "id": key,
+            "name": comp['name'],
+            "avg_score": comp['avg_score'],
+            "trust": comp['trust'],
+            "regulatory": comp['regulatory'],
+            "cta": comp['cta'],
+            "difference": diff,
+            "status": "above" if diff > 0 else ("below" if diff < 0 else "equal")
+        })
+    
+    # Sort by avg_score descending
+    competitors.sort(key=lambda x: x['avg_score'], reverse=True)
+    
+    # Calculate ranking
+    all_scores = [c['avg_score'] for c in competitors] + [user_score]
+    all_scores.sort(reverse=True)
+    ranking = all_scores.index(user_score) + 1
+    percentile = ((len(all_scores) - ranking) / len(all_scores)) * 100
+    
+    # Generate summary
+    above_count = sum(1 for c in competitors if user_score > c['avg_score'])
+    total = len(competitors)
+    
+    if above_count == total:
+        summary = "Tebrikler! Görseliniz tüm global rakiplerin üzerinde performans gösteriyor. Top 10 ilaç şirketinin hepsinden yüksek puan aldınız."
+    elif above_count >= total * 0.7:
+        summary = f"Görseliniz {above_count}/{total} global rakipten daha iyi performans gösteriyor. Sektör liderleri arasında yer alıyorsunuz."
+    elif above_count >= total * 0.5:
+        summary = f"Görseliniz sektör ortalamasının üzerinde. {above_count}/{total} rakipten daha iyi performans gösteriyorsunuz."
+    elif above_count >= total * 0.3:
+        summary = f"Görseliniz sektör ortalamasının altında. Sadece {above_count}/{total} rakipten daha iyi performans gösteriyorsunuz. İyileştirme önerilmektedir."
+    else:
+        summary = f"Görseliniz sektörün gerisinde kalıyor. Sadece {above_count}/{total} rakipten daha iyi. Optimizasyon gereklidir."
+    
+    return CompetitorComparisonResponse(
+        analysis_score=user_score,
+        competitors=competitors,
+        ranking=ranking,
+        percentile=round(percentile, 1),
+        summary=summary
+    )
+
 # Include the router in the main app
 app.include_router(api_router)
 

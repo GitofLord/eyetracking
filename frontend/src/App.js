@@ -23,9 +23,16 @@ import {
   BookOpen,
   Gauge,
   Focus,
-  Scan,
   TrendingUp,
-  Layers
+  GitCompare,
+  Trophy,
+  Medal,
+  Crown,
+  ChevronUp,
+  ChevronDown,
+  Minus,
+  Building2,
+  BarChart2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -34,6 +41,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Checkbox } from "@/components/ui/checkbox";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
@@ -574,6 +582,16 @@ function App() {
   const [history, setHistory] = useState([]);
   const [showConfetti, setShowConfetti] = useState(false);
   const [activeTab, setActiveTab] = useState("heatmap");
+  
+  // A/B Test State
+  const [abMode, setAbMode] = useState(false);
+  const [selectedForAB, setSelectedForAB] = useState([]);
+  const [abComparison, setAbComparison] = useState(null);
+  const [isComparing, setIsComparing] = useState(false);
+  
+  // Competitor Benchmark State
+  const [competitorData, setCompetitorData] = useState(null);
+  const [showCompetitorModal, setShowCompetitorModal] = useState(false);
 
   const fetchHistory = useCallback(async () => {
     try {
@@ -694,6 +712,50 @@ function App() {
     }
   };
 
+  // A/B Test Functions
+  const handleSelectForAB = (id) => {
+    if (selectedForAB.includes(id)) {
+      setSelectedForAB(selectedForAB.filter(i => i !== id));
+    } else if (selectedForAB.length < 2) {
+      setSelectedForAB([...selectedForAB, id]);
+    } else {
+      toast.error("A/B testi için maksimum 2 görsel seçebilirsiniz");
+    }
+  };
+
+  const handleCompareAB = async () => {
+    if (selectedForAB.length !== 2) {
+      toast.error("Lütfen karşılaştırmak için 2 analiz seçin");
+      return;
+    }
+
+    setIsComparing(true);
+    try {
+      const response = await axios.post(`${API}/compare`, {
+        analysis_id_a: selectedForAB[0],
+        analysis_id_b: selectedForAB[1]
+      });
+      setAbComparison(response.data);
+      toast.success("A/B karşılaştırma tamamlandı!");
+    } catch (error) {
+      console.error("Comparison error:", error);
+      toast.error("Karşılaştırma sırasında hata oluştu");
+    } finally {
+      setIsComparing(false);
+    }
+  };
+
+  const handleFetchCompetitorBenchmark = async (analysisId) => {
+    try {
+      const response = await axios.get(`${API}/competitor-benchmark/${analysisId}`);
+      setCompetitorData(response.data);
+      setShowCompetitorModal(true);
+    } catch (error) {
+      console.error("Benchmark error:", error);
+      toast.error("Rakip karşılaştırması alınamadı");
+    }
+  };
+
   return (
     <div className="min-h-screen bg-[#020408] grid-background">
       <Toaster theme="dark" position="top-right" />
@@ -798,16 +860,37 @@ function App() {
               </CardContent>
             </Card>
 
-            {/* History Card */}
+            {/* History Card with A/B Test Mode */}
             <Card className="glass-card">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <History className="w-5 h-5 text-[#0EA5E9]" />
-                  Analiz Geçmişi
-                </CardTitle>
+              <CardHeader className="pb-2">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="flex items-center gap-2 text-base">
+                    <History className="w-5 h-5 text-[#0EA5E9]" />
+                    Analiz Geçmişi
+                  </CardTitle>
+                  <Button
+                    variant={abMode ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => {
+                      setAbMode(!abMode);
+                      setSelectedForAB([]);
+                      setAbComparison(null);
+                    }}
+                    className={abMode ? "bg-purple-600 hover:bg-purple-700" : "border-purple-500/50 text-purple-400"}
+                    data-testid="ab-mode-toggle"
+                  >
+                    <GitCompare className="w-3 h-3 mr-1" />
+                    A/B
+                  </Button>
+                </div>
+                {abMode && (
+                  <p className="text-xs text-purple-400 mt-2">
+                    Karşılaştırmak için 2 analiz seçin ({selectedForAB.length}/2)
+                  </p>
+                )}
               </CardHeader>
               <CardContent className="p-0">
-                <ScrollArea className="h-64">
+                <ScrollArea className="h-52">
                   {history.length === 0 ? (
                     <p className="text-sm text-muted-foreground text-center py-8">
                       Henüz analiz yapılmamış
@@ -817,10 +900,19 @@ function App() {
                       {history.map((item) => (
                         <div 
                           key={item.id}
-                          className="flex items-center justify-between p-2 rounded-lg hover:bg-white/5 group cursor-pointer"
-                          onClick={() => handleLoadAnalysis(item.id)}
+                          className={`flex items-center gap-2 p-2 rounded-lg hover:bg-white/5 group cursor-pointer ${
+                            selectedForAB.includes(item.id) ? 'bg-purple-500/20 border border-purple-500/50' : ''
+                          }`}
+                          onClick={() => abMode ? handleSelectForAB(item.id) : handleLoadAnalysis(item.id)}
                           data-testid={`history-item-${item.id}`}
                         >
+                          {abMode && (
+                            <Checkbox
+                              checked={selectedForAB.includes(item.id)}
+                              onCheckedChange={() => handleSelectForAB(item.id)}
+                              className="border-purple-500 data-[state=checked]:bg-purple-600"
+                            />
+                          )}
                           <div className="flex-1 min-w-0">
                             <p className="text-sm truncate">{item.image_name}</p>
                             <div className="flex items-center gap-2">
@@ -840,18 +932,41 @@ function App() {
                               </span>
                             </div>
                           </div>
-                          <button
-                            onClick={(e) => { e.stopPropagation(); handleDeleteAnalysis(item.id); }}
-                            className="opacity-0 group-hover:opacity-100 p-1 hover:bg-red-500/20 rounded"
-                            data-testid={`delete-${item.id}`}
-                          >
-                            <Trash2 className="w-4 h-4 text-red-500" />
-                          </button>
+                          {!abMode && (
+                            <button
+                              onClick={(e) => { e.stopPropagation(); handleDeleteAnalysis(item.id); }}
+                              className="opacity-0 group-hover:opacity-100 p-1 hover:bg-red-500/20 rounded"
+                              data-testid={`delete-${item.id}`}
+                            >
+                              <Trash2 className="w-4 h-4 text-red-500" />
+                            </button>
+                          )}
                         </div>
                       ))}
                     </div>
                   )}
                 </ScrollArea>
+                
+                {/* A/B Compare Button */}
+                {abMode && selectedForAB.length === 2 && (
+                  <div className="p-4 border-t border-white/10">
+                    <Button
+                      onClick={handleCompareAB}
+                      disabled={isComparing}
+                      className="w-full bg-purple-600 hover:bg-purple-700"
+                      data-testid="compare-ab-button"
+                    >
+                      {isComparing ? (
+                        <>Karşılaştırılıyor...</>
+                      ) : (
+                        <>
+                          <GitCompare className="w-4 h-4 mr-2" />
+                          A/B Karşılaştır
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </motion.div>
@@ -868,21 +983,33 @@ function App() {
                 {/* SanoScore Card */}
                 <Card className="glass-card neon-glow">
                   <CardHeader className="pb-2">
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between flex-wrap gap-2">
                       <CardTitle className="text-xl flex items-center gap-2">
                         <BarChart3 className="w-5 h-5 text-[#0EA5E9]" />
                         📊 SanoScore
                       </CardTitle>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => generatePDFReport(result)}
-                        className="border-[#10B981]/50 text-[#10B981] hover:bg-[#10B981]/10 gap-2"
-                        data-testid="download-pdf-button"
-                      >
-                        <Download className="w-4 h-4" />
-                        PDF İndir
-                      </Button>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleFetchCompetitorBenchmark(result.id)}
+                          className="border-amber-500/50 text-amber-400 hover:bg-amber-500/10 gap-1"
+                          data-testid="competitor-benchmark-button"
+                        >
+                          <Trophy className="w-4 h-4" />
+                          Rakip Karşılaştır
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => generatePDFReport(result)}
+                          className="border-[#10B981]/50 text-[#10B981] hover:bg-[#10B981]/10 gap-1"
+                          data-testid="download-pdf-button"
+                        >
+                          <Download className="w-4 h-4" />
+                          PDF
+                        </Button>
+                      </div>
                     </div>
                   </CardHeader>
                   <CardContent>
@@ -1044,6 +1171,129 @@ function App() {
                   />
                 </div>
               </>
+            ) : abComparison ? (
+              /* A/B Comparison Results */
+              <Card className="glass-card">
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-xl flex items-center gap-2">
+                      <GitCompare className="w-5 h-5 text-purple-500" />
+                      A/B Test Sonuçları
+                    </CardTitle>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setAbComparison(null);
+                        setSelectedForAB([]);
+                        setAbMode(false);
+                      }}
+                      className="border-white/20"
+                    >
+                      <X className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  {/* Winner Banner */}
+                  <div className={`p-4 rounded-xl text-center ${
+                    abComparison.winner === "A" ? "bg-blue-500/20 border border-blue-500/50" :
+                    abComparison.winner === "B" ? "bg-green-500/20 border border-green-500/50" :
+                    "bg-yellow-500/20 border border-yellow-500/50"
+                  }`}>
+                    <div className="flex items-center justify-center gap-2 mb-2">
+                      {abComparison.winner === "TIE" ? (
+                        <Minus className="w-6 h-6 text-yellow-400" />
+                      ) : (
+                        <Crown className="w-6 h-6 text-yellow-400" />
+                      )}
+                      <span className="text-2xl font-bold">
+                        {abComparison.winner === "TIE" ? "Berabere!" : `Kazanan: Görsel ${abComparison.winner}`}
+                      </span>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      {abComparison.winner !== "TIE" && `${abComparison.score_difference} puan farkla`}
+                    </p>
+                  </div>
+
+                  {/* Side by Side Comparison */}
+                  <div className="grid grid-cols-2 gap-4">
+                    {/* Analysis A */}
+                    <div className={`p-4 rounded-xl ${abComparison.winner === "A" ? "bg-blue-500/10 border-2 border-blue-500" : "bg-white/5 border border-white/10"}`}>
+                      <div className="flex items-center gap-2 mb-3">
+                        <Badge className="bg-blue-500">A</Badge>
+                        <span className="text-sm truncate">{abComparison.analysis_a.image_name}</span>
+                        {abComparison.winner === "A" && <Trophy className="w-4 h-4 text-yellow-400 ml-auto" />}
+                      </div>
+                      <div className="text-4xl font-mono font-bold text-center mb-2" style={{ color: abComparison.analysis_a.sano_score > 60 ? "#10B981" : abComparison.analysis_a.sano_score > 40 ? "#EAB308" : "#EF4444" }}>
+                        {abComparison.analysis_a.sano_score}
+                      </div>
+                      <p className="text-xs text-center text-muted-foreground mb-3">{abComparison.analysis_a.score_tier}</p>
+                      <div className="space-y-2 text-xs">
+                        <div className="flex justify-between"><span>Güven</span><span>{abComparison.analysis_a.trust_factor}%</span></div>
+                        <div className="flex justify-between"><span>Regülasyon</span><span>{abComparison.analysis_a.regulatory_visibility}%</span></div>
+                        <div className="flex justify-between"><span>CTA</span><span>{abComparison.analysis_a.cta_focus}%</span></div>
+                      </div>
+                    </div>
+
+                    {/* Analysis B */}
+                    <div className={`p-4 rounded-xl ${abComparison.winner === "B" ? "bg-green-500/10 border-2 border-green-500" : "bg-white/5 border border-white/10"}`}>
+                      <div className="flex items-center gap-2 mb-3">
+                        <Badge className="bg-green-500">B</Badge>
+                        <span className="text-sm truncate">{abComparison.analysis_b.image_name}</span>
+                        {abComparison.winner === "B" && <Trophy className="w-4 h-4 text-yellow-400 ml-auto" />}
+                      </div>
+                      <div className="text-4xl font-mono font-bold text-center mb-2" style={{ color: abComparison.analysis_b.sano_score > 60 ? "#10B981" : abComparison.analysis_b.sano_score > 40 ? "#EAB308" : "#EF4444" }}>
+                        {abComparison.analysis_b.sano_score}
+                      </div>
+                      <p className="text-xs text-center text-muted-foreground mb-3">{abComparison.analysis_b.score_tier}</p>
+                      <div className="space-y-2 text-xs">
+                        <div className="flex justify-between"><span>Güven</span><span>{abComparison.analysis_b.trust_factor}%</span></div>
+                        <div className="flex justify-between"><span>Regülasyon</span><span>{abComparison.analysis_b.regulatory_visibility}%</span></div>
+                        <div className="flex justify-between"><span>CTA</span><span>{abComparison.analysis_b.cta_focus}%</span></div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Metric Comparison Bars */}
+                  <div className="space-y-3">
+                    <h4 className="text-sm font-medium">Metrik Karşılaştırması</h4>
+                    {abComparison.metric_comparisons.map((metric, idx) => (
+                      <div key={idx} className="space-y-1">
+                        <div className="flex justify-between text-xs">
+                          <span>{metric.name}</span>
+                          <span className={metric.winner === "A" ? "text-blue-400" : metric.winner === "B" ? "text-green-400" : "text-yellow-400"}>
+                            {metric.winner === "TIE" ? "=" : metric.winner}
+                          </span>
+                        </div>
+                        <div className="flex gap-1 h-4">
+                          <div 
+                            className="bg-blue-500 rounded-l"
+                            style={{ width: `${(metric.a / (metric.a + metric.b)) * 100}%` }}
+                          />
+                          <div 
+                            className="bg-green-500 rounded-r"
+                            style={{ width: `${(metric.b / (metric.a + metric.b)) * 100}%` }}
+                          />
+                        </div>
+                        <div className="flex justify-between text-xs text-muted-foreground">
+                          <span>A: {metric.a}{metric.lower_is_better ? 's' : '%'}</span>
+                          <span>B: {metric.b}{metric.lower_is_better ? 's' : '%'}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* AI Summary */}
+                  <div className="p-4 rounded-xl bg-purple-500/10 border border-purple-500/30">
+                    <h4 className="text-sm font-medium flex items-center gap-2 mb-2">
+                      <BrainCircuit className="w-4 h-4 text-purple-400" />
+                      AI Karşılaştırma Özeti
+                    </h4>
+                    <p className="text-sm text-muted-foreground">{abComparison.comparison_summary}</p>
+                  </div>
+                </CardContent>
+              </Card>
             ) : (
               <Card className="glass-card h-96 flex items-center justify-center">
                 <div className="text-center">
@@ -1052,6 +1302,11 @@ function App() {
                   <p className="text-sm text-muted-foreground">
                     İlaç reklamı veya HCP materyali yükleyerek başlayın
                   </p>
+                  {history.length >= 2 && (
+                    <p className="text-xs text-purple-400 mt-4">
+                      💡 İpucu: A/B testi için geçmişten 2 analiz seçebilirsiniz
+                    </p>
+                  )}
                 </div>
               </Card>
             )}
@@ -1105,6 +1360,135 @@ function App() {
           </motion.div>
         </div>
       </main>
+
+      {/* Competitor Benchmark Modal */}
+      <Dialog open={showCompetitorModal} onOpenChange={setShowCompetitorModal}>
+        <DialogContent className="max-w-3xl max-h-[85vh] overflow-hidden bg-[#0B101B] border-white/10" aria-describedby="competitor-modal-desc">
+          <DialogHeader>
+            <DialogTitle className="text-xl flex items-center gap-2 text-white">
+              <Trophy className="w-6 h-6 text-amber-400" />
+              Rakip Karşılaştırması - Global İlaç Şirketleri
+            </DialogTitle>
+            <p id="competitor-modal-desc" className="sr-only">Global ilaç şirketleri ile karşılaştırma</p>
+          </DialogHeader>
+          
+          {competitorData && (
+            <ScrollArea className="h-[65vh] pr-4">
+              <div className="space-y-6">
+                {/* Your Score & Ranking */}
+                <div className="p-4 rounded-xl bg-gradient-to-r from-[#0EA5E9]/20 to-purple-500/20 border border-[#0EA5E9]/30">
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Sizin Puanınız</p>
+                      <p className="text-4xl font-mono font-bold text-[#0EA5E9]">{competitorData.analysis_score}</p>
+                    </div>
+                    <div className="text-right">
+                      <div className="flex items-center gap-2">
+                        <Medal className="w-8 h-8 text-amber-400" />
+                        <span className="text-3xl font-bold">#{competitorData.ranking}</span>
+                      </div>
+                      <p className="text-sm text-muted-foreground">Top %{Math.round(100 - competitorData.percentile)}</p>
+                    </div>
+                  </div>
+                  <p className="text-sm">{competitorData.summary}</p>
+                </div>
+
+                {/* Competitor List */}
+                <div className="space-y-2">
+                  <h4 className="text-sm font-medium flex items-center gap-2">
+                    <Building2 className="w-4 h-4" />
+                    Global İlaç Şirketleri Sıralaması
+                  </h4>
+                  
+                  {competitorData.competitors.map((comp, idx) => (
+                    <motion.div
+                      key={comp.id}
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: idx * 0.05 }}
+                      className={`p-3 rounded-lg flex items-center gap-4 ${
+                        comp.status === "below" ? "bg-red-500/10" : comp.status === "above" ? "bg-green-500/10" : "bg-yellow-500/10"
+                      }`}
+                    >
+                      <div className="w-8 text-center font-mono text-lg">
+                        {idx + 1}
+                      </div>
+                      <div className="flex-1">
+                        <p className="font-medium">{comp.name}</p>
+                        <div className="flex gap-4 text-xs text-muted-foreground">
+                          <span>Güven: {comp.trust}%</span>
+                          <span>Reg: {comp.regulatory}%</span>
+                          <span>CTA: {comp.cta}%</span>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-xl font-mono font-bold">{comp.avg_score}</p>
+                        <div className={`flex items-center gap-1 text-xs ${
+                          comp.status === "above" ? "text-green-400" : comp.status === "below" ? "text-red-400" : "text-yellow-400"
+                        }`}>
+                          {comp.status === "above" ? (
+                            <><ChevronUp className="w-3 h-3" />+{comp.difference}</>
+                          ) : comp.status === "below" ? (
+                            <><ChevronDown className="w-3 h-3" />{comp.difference}</>
+                          ) : (
+                            <><Minus className="w-3 h-3" />0</>
+                          )}
+                        </div>
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+
+                {/* Your Position Indicator */}
+                <div className="p-3 rounded-lg bg-[#0EA5E9]/20 border-2 border-[#0EA5E9] flex items-center gap-4">
+                  <div className="w-8 text-center">
+                    <Crown className="w-5 h-5 text-amber-400 mx-auto" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-medium text-[#0EA5E9]">Sizin Görseliniz</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xl font-mono font-bold text-[#0EA5E9]">{competitorData.analysis_score}</p>
+                    <p className="text-xs text-muted-foreground">#{competitorData.ranking} sırada</p>
+                  </div>
+                </div>
+
+                {/* Chart Visualization */}
+                <div className="p-4 rounded-xl bg-white/5">
+                  <h4 className="text-sm font-medium mb-4 flex items-center gap-2">
+                    <BarChart2 className="w-4 h-4" />
+                    Puan Dağılımı
+                  </h4>
+                  <div className="space-y-2">
+                    {competitorData.competitors.map((comp) => (
+                      <div key={comp.id} className="flex items-center gap-2">
+                        <span className="w-24 text-xs truncate">{comp.name.split(' ')[0]}</span>
+                        <div className="flex-1 h-4 bg-white/10 rounded overflow-hidden">
+                          <div 
+                            className={`h-full ${comp.status === "below" ? "bg-amber-500" : "bg-slate-500"}`}
+                            style={{ width: `${comp.avg_score}%` }}
+                          />
+                        </div>
+                        <span className="w-8 text-xs text-right">{comp.avg_score}</span>
+                      </div>
+                    ))}
+                    <div className="flex items-center gap-2 mt-2 pt-2 border-t border-white/10">
+                      <span className="w-24 text-xs text-[#0EA5E9] font-medium">Siz</span>
+                      <div className="flex-1 h-4 bg-white/10 rounded overflow-hidden">
+                        <div 
+                          className="h-full bg-[#0EA5E9]"
+                          style={{ width: `${competitorData.analysis_score}%` }}
+                        />
+                      </div>
+                      <span className="w-8 text-xs text-right text-[#0EA5E9] font-medium">{competitorData.analysis_score}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </ScrollArea>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Footer with Terms & KPIs Button */}
       <footer className="border-t border-white/10 py-8">

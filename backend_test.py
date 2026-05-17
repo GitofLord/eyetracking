@@ -20,6 +20,8 @@ class SanoTrackingAPITester:
         self.tests_run = 0
         self.tests_passed = 0
         self.analysis_id = None
+        self.analysis_id_a = None
+        self.analysis_id_b = None
 
     def log_test(self, name, success, details=""):
         """Log test results"""
@@ -263,6 +265,140 @@ class SanoTrackingAPITester:
             self.log_test("Invalid Analysis ID", False, str(e))
             return False
 
+    def test_create_analysis_for_ab(self, name="A"):
+        """Create an analysis for A/B testing"""
+        try:
+            # Create test image
+            img_base64 = self.create_test_image()
+            
+            # Create multipart form data
+            files = {
+                'file': (f'test_pharma_ad_{name}.png', base64.b64decode(img_base64), 'image/png')
+            }
+            
+            print(f"🔄 Creating analysis {name} for A/B test (this may take 30-60 seconds)...")
+            response = requests.post(f"{self.api_url}/analyze", files=files, timeout=120)
+            
+            success = response.status_code == 200
+            
+            if success:
+                data = response.json()
+                analysis_id = data.get('id')
+                
+                if name == "A":
+                    self.analysis_id_a = analysis_id
+                else:
+                    self.analysis_id_b = analysis_id
+                
+                details = f"Created analysis {name} with ID: {analysis_id[:8]}..., Score: {data.get('sano_score')}"
+            else:
+                details = f"Status: {response.status_code}"
+                
+            self.log_test(f"Create Analysis {name} for A/B", success, details)
+            return success
+            
+        except Exception as e:
+            self.log_test(f"Create Analysis {name} for A/B", False, str(e))
+            return False
+
+    def test_ab_comparison(self):
+        """Test A/B comparison endpoint"""
+        if not self.analysis_id_a or not self.analysis_id_b:
+            self.log_test("A/B Comparison", False, "Missing analysis IDs for A/B test")
+            return False
+            
+        try:
+            payload = {
+                "analysis_id_a": self.analysis_id_a,
+                "analysis_id_b": self.analysis_id_b
+            }
+            
+            print("🔄 Running A/B comparison (this may take 10-20 seconds for AI summary)...")
+            response = requests.post(f"{self.api_url}/compare", json=payload, timeout=60)
+            
+            success = response.status_code == 200
+            
+            if success:
+                data = response.json()
+                
+                # Verify required fields
+                required_fields = ['winner', 'score_difference', 'analysis_a', 'analysis_b', 'comparison_summary', 'metric_comparisons']
+                missing_fields = [field for field in required_fields if field not in data]
+                
+                if missing_fields:
+                    success = False
+                    details = f"Missing fields: {missing_fields}"
+                else:
+                    # Verify winner is valid
+                    winner_valid = data['winner'] in ['A', 'B', 'TIE']
+                    
+                    # Verify metric_comparisons is a list
+                    metrics_valid = isinstance(data['metric_comparisons'], list) and len(data['metric_comparisons']) > 0
+                    
+                    # Verify comparison_summary is not empty
+                    summary_valid = len(data['comparison_summary']) > 0
+                    
+                    if not all([winner_valid, metrics_valid, summary_valid]):
+                        success = False
+                        details = f"Invalid data: winner={winner_valid}, metrics={metrics_valid}, summary={summary_valid}"
+                    else:
+                        details = f"Winner: {data['winner']}, Score Diff: {data['score_difference']}, Metrics: {len(data['metric_comparisons'])}"
+            else:
+                details = f"Status: {response.status_code}, Response: {response.text[:200]}"
+                
+            self.log_test("A/B Comparison", success, details)
+            return success
+            
+        except Exception as e:
+            self.log_test("A/B Comparison", False, str(e))
+            return False
+
+    def test_competitor_benchmark(self):
+        """Test competitor benchmark endpoint"""
+        if not self.analysis_id_a:
+            self.log_test("Competitor Benchmark", False, "No analysis ID available")
+            return False
+            
+        try:
+            response = requests.get(f"{self.api_url}/competitor-benchmark/{self.analysis_id_a}", timeout=10)
+            
+            success = response.status_code == 200
+            
+            if success:
+                data = response.json()
+                
+                # Verify required fields
+                required_fields = ['analysis_score', 'competitors', 'ranking', 'percentile', 'summary']
+                missing_fields = [field for field in required_fields if field not in data]
+                
+                if missing_fields:
+                    success = False
+                    details = f"Missing fields: {missing_fields}"
+                else:
+                    # Verify competitors list
+                    competitors_valid = isinstance(data['competitors'], list) and len(data['competitors']) == 10
+                    
+                    # Verify ranking is valid
+                    ranking_valid = 1 <= data['ranking'] <= 11
+                    
+                    # Verify percentile is valid
+                    percentile_valid = 0 <= data['percentile'] <= 100
+                    
+                    if not all([competitors_valid, ranking_valid, percentile_valid]):
+                        success = False
+                        details = f"Invalid data: competitors={competitors_valid}, ranking={ranking_valid}, percentile={percentile_valid}"
+                    else:
+                        details = f"Score: {data['analysis_score']}, Ranking: #{data['ranking']}, Percentile: {data['percentile']}%, Competitors: {len(data['competitors'])}"
+            else:
+                details = f"Status: {response.status_code}, Response: {response.text[:200]}"
+                
+            self.log_test("Competitor Benchmark", success, details)
+            return success
+            
+        except Exception as e:
+            self.log_test("Competitor Benchmark", False, str(e))
+            return False
+
     def run_all_tests(self):
         """Run all backend tests"""
         print("🧪 Starting SanoTracking.AI Backend API Tests")
@@ -277,7 +413,12 @@ class SanoTrackingAPITester:
             self.test_get_specific_analysis,
             self.test_history_endpoint_with_data,
             self.test_delete_analysis,
-            self.test_invalid_endpoints
+            self.test_invalid_endpoints,
+            # New A/B Test and Competitor Benchmark tests
+            lambda: self.test_create_analysis_for_ab("A"),
+            lambda: self.test_create_analysis_for_ab("B"),
+            self.test_ab_comparison,
+            self.test_competitor_benchmark
         ]
         
         for test in tests:
