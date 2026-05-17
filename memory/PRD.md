@@ -23,8 +23,11 @@ SanoTracking.AI - Elite Pharmaceutical Neuromarketing & Eye-Tracking Simulator s
 - KPI metrics (TTFF, AOI, Cognitive Load)
 - Recommendations (Doz Artırımı, Yan Etkiler, Tedavi Planı)
 - Analysis history with save/delete
+- A/B Test Comparison
+- Competitor Benchmark Analysis
 
 ## What's Been Implemented (Jan 2026)
+### Phase 1 (Initial MVP)
 - [x] Full Turkish interface
 - [x] Image upload with drag & drop
 - [x] AI-powered image analysis (Gemini 3 Flash)
@@ -33,32 +36,57 @@ SanoTracking.AI - Elite Pharmaceutical Neuromarketing & Eye-Tracking Simulator s
 - [x] SanoScore gauge with animation
 - [x] Score breakdown (Trust Factor, Regulatory Visibility, CTA Focus)
 - [x] Before/After/Benchmark comparison cards
-- [x] KPI dashboard (TTFF, AOI, Cognitive Load, Attention Score)
+- [x] KPI dashboard (7 metrics)
 - [x] Recommendation cards
 - [x] Analysis history with CRUD operations
 - [x] Confetti effect for high scores (>80)
 - [x] Red flash effect for critical scores (<40)
 - [x] Loading animation with cycling metrics
 
+### Phase 2 (Updates)
+- [x] SanoScore digital display on right with blinking effect
+- [x] Terms & KPIs modal with eye-tracking terminology
+- [x] PDF report download
+- [x] Improved KPI cards (7 compact cards)
+
+### Phase 3 (A/B & Competitor Features)
+- [x] A/B Test Mode in history section
+- [x] Select 2 analyses for comparison
+- [x] A/B comparison results with winner announcement
+- [x] Metric comparison bars (SanoScore, Trust, Regulatory, CTA, TTFF)
+- [x] AI-powered comparison summary
+- [x] Competitor Benchmark button
+- [x] Ranking against Top 10 Global Pharma (Pfizer, Roche, Merck, etc.)
+- [x] Percentile calculation and summary
+
+## API Endpoints
+- POST /api/analyze - Analyze uploaded image
+- GET /api/history - Get analysis history
+- GET /api/analysis/{id} - Get specific analysis
+- DELETE /api/analysis/{id} - Delete analysis
+- POST /api/compare - Compare two analyses (A/B test)
+- GET /api/competitor-benchmark/{id} - Compare against global pharma
+
 ## Prioritized Backlog
 ### P0 (Must Have) - COMPLETED
 - ✅ Core analysis workflow
 - ✅ Heat map generation
 - ✅ Saliency mask generation
-- ✅ Turkish interface
+- ✅ A/B Test comparison
+- ✅ Competitor benchmarking
 
 ### P1 (Should Have) - FUTURE
-- [ ] PDF report export
-- [ ] Multiple image comparison
+- [ ] Multiple image batch analysis
 - [ ] Historical trend analysis
+- [ ] Export all analyses as Excel
 
 ### P2 (Nice to Have) - FUTURE
 - [ ] User authentication
 - [ ] Team collaboration features
-- [ ] API access for third-party integrations
 - [ ] Custom benchmark profiles
+- [ ] Real eye-tracking device integration
 
 ## Next Tasks
-1. Add PDF report export functionality
-2. Implement side-by-side image comparison
-3. Add user authentication (optional)
+1. Multiple image batch upload and analysis
+2. Historical trend charts for repeated analyses
+3. Team sharing and collaboration features
