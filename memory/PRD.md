@@ -1,23 +1,22 @@
 # SanoTracking.AI - Product Requirements Document
 
 ## Original Problem Statement
-SanoTracking.AI - Elite Pharmaceutical Neuromarketing & Eye-Tracking Simulator specifically engineered for the PHARMACEUTICAL INDUSTRY. Analyzes medical advertisements, HCP portals, and patient awareness materials. Evaluates designs based on Trust, Regulatory Clarity, and Cognitive Ease. Turkish language interface.
+SanoTracking.AI - Elite Pharmaceutical Neuromarketing & Eye-Tracking Simulator specifically engineered for the PHARMACEUTICAL INDUSTRY. Analyzes medical advertisements, HCP portals, and patient awareness materials. Turkish language interface.
 
 ## Architecture
-- **Frontend:** React with Tailwind CSS, Framer Motion, React Confetti
+- **Frontend:** React with Tailwind CSS, Framer Motion, React Confetti, Recharts
 - **Backend:** FastAPI with Python
 - **Database:** MongoDB
 - **AI Integration:** Gemini 3 Flash (image analysis), Gemini Nano Banana (heat map/saliency generation)
 
 ## User Personas
-1. **Pharmaceutical Marketing Managers** - Need to validate ad effectiveness before launch
-2. **Medical Advertisement Designers** - Want objective feedback on design decisions
-3. **HCP Portal Managers** - Need to optimize healthcare professional interfaces
+1. **Pharmaceutical Marketing Managers** - Validate ad effectiveness, track team performance
+2. **Medical Advertisement Designers** - Get objective feedback, compare designs
+3. **HCP Portal Managers** - Optimize interfaces, share with teams
 
 ## Core Requirements (Static)
 - Turkish language interface
-- Heat Map simulation with visual overlay
-- Saliency Mask (B&W hierarchy visualization)
+- Heat Map simulation & Saliency Mask
 - SanoScore (0-100) with animated gauge
 - Before/After/Benchmark comparison
 - KPI metrics (TTFF, AOI, Cognitive Load)
@@ -25,6 +24,9 @@ SanoTracking.AI - Elite Pharmaceutical Neuromarketing & Eye-Tracking Simulator s
 - Analysis history with save/delete
 - A/B Test Comparison
 - Competitor Benchmark Analysis
+- Batch Upload (Multiple Images)
+- Historical Trend Analysis
+- Team Sharing
 
 ## What's Been Implemented (Jan 2026)
 ### Phase 1 (Initial MVP)
@@ -34,59 +36,80 @@ SanoTracking.AI - Elite Pharmaceutical Neuromarketing & Eye-Tracking Simulator s
 - [x] Heat map generation (Gemini Nano Banana)
 - [x] Saliency mask generation
 - [x] SanoScore gauge with animation
-- [x] Score breakdown (Trust Factor, Regulatory Visibility, CTA Focus)
-- [x] Before/After/Benchmark comparison cards
 - [x] KPI dashboard (7 metrics)
 - [x] Recommendation cards
-- [x] Analysis history with CRUD operations
-- [x] Confetti effect for high scores (>80)
-- [x] Red flash effect for critical scores (<40)
-- [x] Loading animation with cycling metrics
+- [x] Analysis history with CRUD
 
 ### Phase 2 (Updates)
-- [x] SanoScore digital display on right with blinking effect
+- [x] SanoScore digital display with blinking effect
 - [x] Terms & KPIs modal with eye-tracking terminology
 - [x] PDF report download
 - [x] Improved KPI cards (7 compact cards)
 
-### Phase 3 (A/B & Competitor Features)
+### Phase 3 (A/B & Competitor)
 - [x] A/B Test Mode in history section
-- [x] Select 2 analyses for comparison
-- [x] A/B comparison results with winner announcement
-- [x] Metric comparison bars (SanoScore, Trust, Regulatory, CTA, TTFF)
+- [x] Metric comparison bars
 - [x] AI-powered comparison summary
-- [x] Competitor Benchmark button
-- [x] Ranking against Top 10 Global Pharma (Pfizer, Roche, Merck, etc.)
-- [x] Percentile calculation and summary
+- [x] Competitor Benchmark against Top 10 Global Pharma
+
+### Phase 4 (Batch, Trends, Teams)
+- [x] Batch Upload (max 10 files at once)
+- [x] Historical Trend Analysis with charts:
+  - Line chart (Score Trend over time)
+  - Pie chart (Score Distribution)
+  - Bar chart (Metric Averages)
+- [x] Team Sharing:
+  - Create/Delete teams
+  - Add/Remove members with roles (viewer/editor/admin)
+  - Share analyses with teams
 
 ## API Endpoints
-- POST /api/analyze - Analyze uploaded image
+### Core
+- POST /api/analyze - Analyze single image
+- POST /api/analyze-batch - Analyze multiple images
 - GET /api/history - Get analysis history
 - GET /api/analysis/{id} - Get specific analysis
 - DELETE /api/analysis/{id} - Delete analysis
-- POST /api/compare - Compare two analyses (A/B test)
+
+### Comparison
+- POST /api/compare - A/B test comparison
 - GET /api/competitor-benchmark/{id} - Compare against global pharma
+
+### Analytics
+- GET /api/trends - Get historical trend data
+- GET /api/stats - Get overall statistics
+
+### Teams
+- POST /api/teams - Create team
+- GET /api/teams - List teams
+- GET /api/teams/{id} - Get team details
+- POST /api/teams/{id}/members - Add member
+- DELETE /api/teams/{id}/members/{mid} - Remove member
+- POST /api/teams/{id}/share - Share analyses
+- GET /api/teams/{id}/analyses - Get shared analyses
+- DELETE /api/teams/{id} - Delete team
 
 ## Prioritized Backlog
 ### P0 (Must Have) - COMPLETED
 - ✅ Core analysis workflow
 - ✅ Heat map generation
-- ✅ Saliency mask generation
 - ✅ A/B Test comparison
 - ✅ Competitor benchmarking
+- ✅ Batch upload
+- ✅ Trend analysis
+- ✅ Team sharing
 
 ### P1 (Should Have) - FUTURE
-- [ ] Multiple image batch analysis
-- [ ] Historical trend analysis
+- [ ] User authentication
 - [ ] Export all analyses as Excel
+- [ ] Email notifications for team shares
 
 ### P2 (Nice to Have) - FUTURE
-- [ ] User authentication
-- [ ] Team collaboration features
+- [ ] Real-time collaboration
 - [ ] Custom benchmark profiles
-- [ ] Real eye-tracking device integration
+- [ ] API access for third-party integrations
 
 ## Next Tasks
-1. Multiple image batch upload and analysis
-2. Historical trend charts for repeated analyses
-3. Team sharing and collaboration features
+1. User authentication system
+2. Email notifications for team activities
+3. Excel export for all analyses
