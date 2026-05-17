@@ -32,7 +32,18 @@ import {
   ChevronDown,
   Minus,
   Building2,
-  BarChart2
+  BarChart2,
+  Upload,
+  Files,
+  Users,
+  UserPlus,
+  Share2,
+  LineChart,
+  PieChart,
+  Mail,
+  Shield,
+  Edit3,
+  Eye as EyeIcon
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -40,8 +51,12 @@ import { Progress } from "@/components/ui/progress";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { LineChart as RechartsLineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart as RechartsPieChart, Pie, Cell, BarChart as RechartsBarChart, Bar, Legend } from 'recharts';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
@@ -592,6 +607,30 @@ function App() {
   // Competitor Benchmark State
   const [competitorData, setCompetitorData] = useState(null);
   const [showCompetitorModal, setShowCompetitorModal] = useState(false);
+  
+  // Batch Upload State
+  const [batchFiles, setBatchFiles] = useState([]);
+  const [isBatchUploading, setIsBatchUploading] = useState(false);
+  const [batchProgress, setBatchProgress] = useState(0);
+  const [batchResults, setBatchResults] = useState(null);
+  const [showBatchModal, setShowBatchModal] = useState(false);
+  
+  // Trend & Stats State
+  const [trendData, setTrendData] = useState(null);
+  const [statsData, setStatsData] = useState(null);
+  const [showTrendsModal, setShowTrendsModal] = useState(false);
+  
+  // Team State
+  const [teams, setTeams] = useState([]);
+  const [currentTeam, setCurrentTeam] = useState(null);
+  const [showTeamModal, setShowTeamModal] = useState(false);
+  const [showCreateTeamModal, setShowCreateTeamModal] = useState(false);
+  const [newTeamName, setNewTeamName] = useState("");
+  const [newTeamDesc, setNewTeamDesc] = useState("");
+  const [newMemberName, setNewMemberName] = useState("");
+  const [newMemberEmail, setNewMemberEmail] = useState("");
+  const [newMemberRole, setNewMemberRole] = useState("viewer");
+  const [selectedAnalysesForShare, setSelectedAnalysesForShare] = useState([]);
 
   const fetchHistory = useCallback(async () => {
     try {
@@ -756,6 +795,172 @@ function App() {
     }
   };
 
+  // Batch Upload Functions
+  const handleBatchFileSelect = (e) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length > 10) {
+      toast.error("Maksimum 10 dosya yükleyebilirsiniz");
+      return;
+    }
+    setBatchFiles(files);
+  };
+
+  const handleBatchUpload = async () => {
+    if (batchFiles.length === 0) {
+      toast.error("Lütfen dosya seçin");
+      return;
+    }
+
+    setIsBatchUploading(true);
+    setBatchProgress(0);
+    
+    try {
+      const formData = new FormData();
+      batchFiles.forEach(file => {
+        formData.append("files", file);
+      });
+
+      // Simulate progress
+      const progressInterval = setInterval(() => {
+        setBatchProgress(prev => Math.min(prev + 10, 90));
+      }, 500);
+
+      const response = await axios.post(`${API}/analyze-batch`, formData, {
+        headers: { "Content-Type": "multipart/form-data" }
+      });
+
+      clearInterval(progressInterval);
+      setBatchProgress(100);
+      setBatchResults(response.data);
+      fetchHistory();
+      toast.success(`${response.data.success_count}/${response.data.total} görsel başarıyla analiz edildi!`);
+      
+    } catch (error) {
+      console.error("Batch upload error:", error);
+      toast.error("Toplu yükleme sırasında hata oluştu");
+    } finally {
+      setIsBatchUploading(false);
+      setBatchFiles([]);
+    }
+  };
+
+  // Trend & Stats Functions
+  const handleFetchTrends = async () => {
+    try {
+      const [trendsRes, statsRes] = await Promise.all([
+        axios.get(`${API}/trends`),
+        axios.get(`${API}/stats`)
+      ]);
+      setTrendData(trendsRes.data);
+      setStatsData(statsRes.data);
+      setShowTrendsModal(true);
+    } catch (error) {
+      console.error("Trends error:", error);
+      toast.error("Trend verileri alınamadı");
+    }
+  };
+
+  // Team Functions
+  const fetchTeams = async () => {
+    try {
+      const response = await axios.get(`${API}/teams`);
+      setTeams(response.data);
+    } catch (error) {
+      console.error("Teams fetch error:", error);
+    }
+  };
+
+  const handleCreateTeam = async () => {
+    if (!newTeamName.trim()) {
+      toast.error("Takım adı gerekli");
+      return;
+    }
+
+    try {
+      const response = await axios.post(`${API}/teams`, {
+        name: newTeamName,
+        description: newTeamDesc
+      });
+      toast.success("Takım oluşturuldu!");
+      setShowCreateTeamModal(false);
+      setNewTeamName("");
+      setNewTeamDesc("");
+      fetchTeams();
+    } catch (error) {
+      toast.error("Takım oluşturulamadı");
+    }
+  };
+
+  const handleAddMember = async () => {
+    if (!currentTeam || !newMemberEmail.trim()) {
+      toast.error("E-posta gerekli");
+      return;
+    }
+
+    try {
+      await axios.post(`${API}/teams/${currentTeam.id}/members`, {
+        name: newMemberName,
+        email: newMemberEmail,
+        role: newMemberRole
+      });
+      toast.success("Üye eklendi!");
+      setNewMemberName("");
+      setNewMemberEmail("");
+      // Refresh team data
+      const res = await axios.get(`${API}/teams/${currentTeam.id}`);
+      setCurrentTeam(res.data);
+    } catch (error) {
+      toast.error("Üye eklenemedi");
+    }
+  };
+
+  const handleRemoveMember = async (memberId) => {
+    if (!currentTeam) return;
+    
+    try {
+      await axios.delete(`${API}/teams/${currentTeam.id}/members/${memberId}`);
+      toast.success("Üye kaldırıldı");
+      const res = await axios.get(`${API}/teams/${currentTeam.id}`);
+      setCurrentTeam(res.data);
+    } catch (error) {
+      toast.error("Üye kaldırılamadı");
+    }
+  };
+
+  const handleShareWithTeam = async () => {
+    if (!currentTeam || selectedAnalysesForShare.length === 0) {
+      toast.error("Paylaşılacak analiz seçin");
+      return;
+    }
+
+    try {
+      await axios.post(`${API}/teams/${currentTeam.id}/share`, {
+        analysis_ids: selectedAnalysesForShare
+      });
+      toast.success(`${selectedAnalysesForShare.length} analiz paylaşıldı!`);
+      setSelectedAnalysesForShare([]);
+    } catch (error) {
+      toast.error("Paylaşım başarısız");
+    }
+  };
+
+  const handleDeleteTeam = async (teamId) => {
+    try {
+      await axios.delete(`${API}/teams/${teamId}`);
+      toast.success("Takım silindi");
+      fetchTeams();
+      if (currentTeam?.id === teamId) {
+        setCurrentTeam(null);
+      }
+    } catch (error) {
+      toast.error("Takım silinemedi");
+    }
+  };
+
+  useEffect(() => {
+    fetchTeams();
+  }, []);
+
   return (
     <div className="min-h-screen bg-[#020408] grid-background">
       <Toaster theme="dark" position="top-right" />
@@ -785,6 +990,40 @@ function App() {
             <Badge variant="outline" className="mt-4 border-[#0EA5E9]/50 text-[#0EA5E9]">
               💊 İlaç Sektörü İçin Optimize Edilmiş
             </Badge>
+            
+            {/* Quick Action Buttons */}
+            <div className="flex flex-wrap justify-center gap-3 mt-6">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowBatchModal(true)}
+                className="border-purple-500/50 text-purple-400 hover:bg-purple-500/10 gap-2"
+                data-testid="batch-upload-btn"
+              >
+                <Files className="w-4 h-4" />
+                Toplu Yükleme
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleFetchTrends}
+                className="border-green-500/50 text-green-400 hover:bg-green-500/10 gap-2"
+                data-testid="trends-btn"
+              >
+                <LineChart className="w-4 h-4" />
+                Trend Analizi
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => { fetchTeams(); setShowTeamModal(true); }}
+                className="border-blue-500/50 text-blue-400 hover:bg-blue-500/10 gap-2"
+                data-testid="team-btn"
+              >
+                <Users className="w-4 h-4" />
+                Takım Paylaşımı
+              </Button>
+            </div>
           </motion.div>
         </div>
       </header>
@@ -1487,6 +1726,447 @@ function App() {
               </div>
             </ScrollArea>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Batch Upload Modal */}
+      <Dialog open={showBatchModal} onOpenChange={setShowBatchModal}>
+        <DialogContent className="max-w-2xl bg-[#0B101B] border-white/10">
+          <DialogHeader>
+            <DialogTitle className="text-xl flex items-center gap-2 text-white">
+              <Files className="w-6 h-6 text-purple-400" />
+              Toplu Görsel Yükleme
+            </DialogTitle>
+            <DialogDescription className="text-muted-foreground">
+              Birden fazla görseli aynı anda analiz edin (maks. 10 dosya)
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div className="border-2 border-dashed border-white/20 rounded-xl p-8 text-center">
+              <input
+                type="file"
+                multiple
+                accept="image/*"
+                onChange={handleBatchFileSelect}
+                className="hidden"
+                id="batch-file-input"
+                data-testid="batch-file-input"
+              />
+              <label htmlFor="batch-file-input" className="cursor-pointer">
+                <Upload className="w-12 h-12 mx-auto text-purple-400 mb-3" />
+                <p className="text-sm text-muted-foreground">
+                  Birden fazla görsel seçmek için tıklayın
+                </p>
+              </label>
+            </div>
+
+            {batchFiles.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-sm font-medium">{batchFiles.length} dosya seçildi:</p>
+                <div className="max-h-32 overflow-y-auto space-y-1">
+                  {batchFiles.map((file, idx) => (
+                    <div key={idx} className="text-xs text-muted-foreground flex items-center gap-2">
+                      <Files className="w-3 h-3" />
+                      {file.name}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {isBatchUploading && (
+              <div className="space-y-2">
+                <Progress value={batchProgress} className="h-2" />
+                <p className="text-xs text-center text-muted-foreground">Analiz ediliyor... %{batchProgress}</p>
+              </div>
+            )}
+
+            {batchResults && (
+              <div className="p-4 rounded-xl bg-white/5 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-green-400">✓ Başarılı: {batchResults.success_count}</span>
+                  {batchResults.fail_count > 0 && (
+                    <span className="text-red-400">✗ Başarısız: {batchResults.fail_count}</span>
+                  )}
+                </div>
+                {batchResults.successful.map((item, idx) => (
+                  <div key={idx} className="text-xs flex items-center justify-between">
+                    <span>{item.image_name}</span>
+                    <Badge variant="outline" className={
+                      item.score_tier === "KRİTİK" ? "border-red-500 text-red-500" :
+                      item.score_tier === "SINIRDA" ? "border-yellow-500 text-yellow-500" :
+                      "border-green-500 text-green-500"
+                    }>
+                      {item.sano_score}
+                    </Badge>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button
+              onClick={handleBatchUpload}
+              disabled={batchFiles.length === 0 || isBatchUploading}
+              className="bg-purple-600 hover:bg-purple-700"
+            >
+              {isBatchUploading ? "Yükleniyor..." : `${batchFiles.length} Görseli Analiz Et`}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Trends Modal */}
+      <Dialog open={showTrendsModal} onOpenChange={setShowTrendsModal}>
+        <DialogContent className="max-w-4xl max-h-[85vh] overflow-hidden bg-[#0B101B] border-white/10">
+          <DialogHeader>
+            <DialogTitle className="text-xl flex items-center gap-2 text-white">
+              <LineChart className="w-6 h-6 text-green-400" />
+              Tarihsel Trend Analizi
+            </DialogTitle>
+          </DialogHeader>
+          
+          {trendData && statsData && (
+            <ScrollArea className="h-[70vh] pr-4">
+              <div className="space-y-6">
+                {/* Stats Overview */}
+                <div className="grid grid-cols-4 gap-4">
+                  <Card className="bg-white/5 border-white/10">
+                    <CardContent className="p-4 text-center">
+                      <p className="text-3xl font-mono font-bold text-[#0EA5E9]">{statsData.total_analyses}</p>
+                      <p className="text-xs text-muted-foreground">Toplam Analiz</p>
+                    </CardContent>
+                  </Card>
+                  <Card className="bg-white/5 border-white/10">
+                    <CardContent className="p-4 text-center">
+                      <p className="text-3xl font-mono font-bold text-green-400">{statsData.averages.sano_score}</p>
+                      <p className="text-xs text-muted-foreground">Ortalama Skor</p>
+                    </CardContent>
+                  </Card>
+                  <Card className="bg-white/5 border-white/10">
+                    <CardContent className="p-4 text-center">
+                      <p className={`text-3xl font-mono font-bold ${
+                        trendData.overall_trend === "improving" ? "text-green-400" :
+                        trendData.overall_trend === "declining" ? "text-red-400" : "text-yellow-400"
+                      }`}>
+                        {trendData.overall_trend === "improving" ? "↑" : trendData.overall_trend === "declining" ? "↓" : "→"}
+                        {Math.abs(trendData.avg_improvement)}
+                      </p>
+                      <p className="text-xs text-muted-foreground">Trend</p>
+                    </CardContent>
+                  </Card>
+                  <Card className="bg-white/5 border-white/10">
+                    <CardContent className="p-4 text-center">
+                      <p className="text-3xl font-mono font-bold text-purple-400">{statsData.distribution.excellent}</p>
+                      <p className="text-xs text-muted-foreground">Mükemmel</p>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* Line Chart */}
+                {trendData.data_points.length > 0 && (
+                  <Card className="bg-white/5 border-white/10">
+                    <CardHeader>
+                      <CardTitle className="text-sm">Skor Trendi</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="h-64">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <RechartsLineChart data={trendData.data_points}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#333" />
+                            <XAxis dataKey="date" tick={{ fill: '#888', fontSize: 10 }} />
+                            <YAxis domain={[0, 100]} tick={{ fill: '#888', fontSize: 10 }} />
+                            <Tooltip 
+                              contentStyle={{ backgroundColor: '#1a1a2e', border: '1px solid #333' }}
+                              labelStyle={{ color: '#fff' }}
+                            />
+                            <Line type="monotone" dataKey="avg_score" stroke="#0EA5E9" strokeWidth={2} dot={{ fill: '#0EA5E9' }} name="Ortalama" />
+                            <Line type="monotone" dataKey="max_score" stroke="#10B981" strokeWidth={1} strokeDasharray="5 5" name="Maksimum" />
+                            <Line type="monotone" dataKey="min_score" stroke="#EF4444" strokeWidth={1} strokeDasharray="5 5" name="Minimum" />
+                          </RechartsLineChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Distribution Pie Chart */}
+                <div className="grid grid-cols-2 gap-4">
+                  <Card className="bg-white/5 border-white/10">
+                    <CardHeader>
+                      <CardTitle className="text-sm">Skor Dağılımı</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="h-48">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <RechartsPieChart>
+                            <Pie
+                              data={[
+                                { name: 'Kritik', value: statsData.distribution.critical, fill: '#EF4444' },
+                                { name: 'Sınırda', value: statsData.distribution.borderline, fill: '#EAB308' },
+                                { name: 'Başarılı', value: statsData.distribution.successful, fill: '#10B981' },
+                                { name: 'Mükemmel', value: statsData.distribution.excellent, fill: '#8B5CF6' }
+                              ]}
+                              cx="50%"
+                              cy="50%"
+                              innerRadius={40}
+                              outerRadius={70}
+                              paddingAngle={2}
+                              dataKey="value"
+                            >
+                            </Pie>
+                            <Tooltip contentStyle={{ backgroundColor: '#1a1a2e', border: '1px solid #333' }} />
+                            <Legend wrapperStyle={{ fontSize: '10px' }} />
+                          </RechartsPieChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="bg-white/5 border-white/10">
+                    <CardHeader>
+                      <CardTitle className="text-sm">Metrik Ortalamaları</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="h-48">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <RechartsBarChart data={[
+                            { name: 'SanoScore', value: statsData.averages.sano_score, fill: '#0EA5E9' },
+                            { name: 'Güven', value: statsData.averages.trust_factor, fill: '#10B981' },
+                            { name: 'Regülasyon', value: statsData.averages.regulatory, fill: '#8B5CF6' },
+                            { name: 'CTA', value: statsData.averages.cta_focus, fill: '#F59E0B' }
+                          ]}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#333" />
+                            <XAxis dataKey="name" tick={{ fill: '#888', fontSize: 9 }} />
+                            <YAxis domain={[0, 100]} tick={{ fill: '#888', fontSize: 10 }} />
+                            <Tooltip contentStyle={{ backgroundColor: '#1a1a2e', border: '1px solid #333' }} />
+                            <Bar dataKey="value" radius={[4, 4, 0, 0]}>
+                              {[
+                                { fill: '#0EA5E9' },
+                                { fill: '#10B981' },
+                                { fill: '#8B5CF6' },
+                                { fill: '#F59E0B' }
+                              ].map((entry, index) => (
+                                <Cell key={`cell-${index}`} fill={entry.fill} />
+                              ))}
+                            </Bar>
+                          </RechartsBarChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              </div>
+            </ScrollArea>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Team Modal */}
+      <Dialog open={showTeamModal} onOpenChange={setShowTeamModal}>
+        <DialogContent className="max-w-3xl max-h-[85vh] overflow-hidden bg-[#0B101B] border-white/10">
+          <DialogHeader>
+            <DialogTitle className="text-xl flex items-center gap-2 text-white">
+              <Users className="w-6 h-6 text-blue-400" />
+              Takım Paylaşımı
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div className="grid grid-cols-3 gap-4 h-[60vh]">
+            {/* Teams List */}
+            <div className="col-span-1 border-r border-white/10 pr-4">
+              <div className="flex items-center justify-between mb-4">
+                <h4 className="text-sm font-medium">Takımlarım</h4>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => setShowCreateTeamModal(true)}
+                  className="h-7 text-blue-400"
+                >
+                  <UserPlus className="w-4 h-4" />
+                </Button>
+              </div>
+              <ScrollArea className="h-[50vh]">
+                <div className="space-y-2">
+                  {teams.length === 0 ? (
+                    <p className="text-xs text-muted-foreground text-center py-4">
+                      Henüz takım yok
+                    </p>
+                  ) : (
+                    teams.map((team) => (
+                      <div
+                        key={team.id}
+                        onClick={() => setCurrentTeam(team)}
+                        className={`p-3 rounded-lg cursor-pointer transition-colors ${
+                          currentTeam?.id === team.id ? 'bg-blue-500/20 border border-blue-500/50' : 'bg-white/5 hover:bg-white/10'
+                        }`}
+                      >
+                        <p className="font-medium text-sm">{team.name}</p>
+                        <p className="text-xs text-muted-foreground">{team.members?.length || 0} üye</p>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </ScrollArea>
+            </div>
+
+            {/* Team Details */}
+            <div className="col-span-2 pl-4">
+              {currentTeam ? (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-lg font-bold">{currentTeam.name}</h3>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => handleDeleteTeam(currentTeam.id)}
+                      className="text-red-400 hover:bg-red-500/20"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
+                  
+                  {currentTeam.description && (
+                    <p className="text-sm text-muted-foreground">{currentTeam.description}</p>
+                  )}
+
+                  {/* Members Section */}
+                  <div className="space-y-2">
+                    <h4 className="text-sm font-medium">Üyeler</h4>
+                    <div className="flex gap-2 mb-2">
+                      <Input
+                        placeholder="İsim"
+                        value={newMemberName}
+                        onChange={(e) => setNewMemberName(e.target.value)}
+                        className="h-8 text-xs bg-white/5 border-white/10"
+                      />
+                      <Input
+                        placeholder="E-posta"
+                        value={newMemberEmail}
+                        onChange={(e) => setNewMemberEmail(e.target.value)}
+                        className="h-8 text-xs bg-white/5 border-white/10"
+                      />
+                      <Select value={newMemberRole} onValueChange={setNewMemberRole}>
+                        <SelectTrigger className="w-24 h-8 text-xs bg-white/5 border-white/10">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="viewer">Görüntüle</SelectItem>
+                          <SelectItem value="editor">Düzenle</SelectItem>
+                          <SelectItem value="admin">Admin</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <Button size="sm" onClick={handleAddMember} className="h-8 bg-blue-600">
+                        <UserPlus className="w-3 h-3" />
+                      </Button>
+                    </div>
+                    
+                    <ScrollArea className="h-24">
+                      {currentTeam.members?.map((member) => (
+                        <div key={member.id} className="flex items-center justify-between p-2 rounded bg-white/5 mb-1">
+                          <div className="flex items-center gap-2">
+                            <div className="w-6 h-6 rounded-full bg-blue-500/20 flex items-center justify-center">
+                              <span className="text-xs">{member.name?.charAt(0) || '?'}</span>
+                            </div>
+                            <div>
+                              <p className="text-xs font-medium">{member.name}</p>
+                              <p className="text-xs text-muted-foreground">{member.email}</p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Badge variant="outline" className="text-xs">
+                              {member.role === 'admin' ? <Shield className="w-3 h-3" /> : 
+                               member.role === 'editor' ? <Edit3 className="w-3 h-3" /> : 
+                               <EyeIcon className="w-3 h-3" />}
+                            </Badge>
+                            <button onClick={() => handleRemoveMember(member.id)} className="text-red-400 hover:text-red-300">
+                              <X className="w-3 h-3" />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </ScrollArea>
+                  </div>
+
+                  {/* Share Section */}
+                  <div className="space-y-2">
+                    <h4 className="text-sm font-medium">Analiz Paylaş</h4>
+                    <ScrollArea className="h-32 border border-white/10 rounded-lg p-2">
+                      {history.map((item) => (
+                        <div key={item.id} className="flex items-center gap-2 p-1">
+                          <Checkbox
+                            checked={selectedAnalysesForShare.includes(item.id)}
+                            onCheckedChange={(checked) => {
+                              if (checked) {
+                                setSelectedAnalysesForShare([...selectedAnalysesForShare, item.id]);
+                              } else {
+                                setSelectedAnalysesForShare(selectedAnalysesForShare.filter(i => i !== item.id));
+                              }
+                            }}
+                          />
+                          <span className="text-xs flex-1">{item.image_name}</span>
+                          <Badge variant="outline" className="text-xs">{item.sano_score}</Badge>
+                        </div>
+                      ))}
+                    </ScrollArea>
+                    <Button
+                      size="sm"
+                      onClick={handleShareWithTeam}
+                      disabled={selectedAnalysesForShare.length === 0}
+                      className="w-full bg-blue-600 hover:bg-blue-700"
+                    >
+                      <Share2 className="w-4 h-4 mr-2" />
+                      {selectedAnalysesForShare.length} Analizi Paylaş
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="h-full flex items-center justify-center">
+                  <p className="text-sm text-muted-foreground">Bir takım seçin veya yeni takım oluşturun</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Create Team Modal */}
+      <Dialog open={showCreateTeamModal} onOpenChange={setShowCreateTeamModal}>
+        <DialogContent className="max-w-md bg-[#0B101B] border-white/10">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <UserPlus className="w-5 h-5 text-blue-400" />
+              Yeni Takım Oluştur
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="team-name">Takım Adı</Label>
+              <Input
+                id="team-name"
+                value={newTeamName}
+                onChange={(e) => setNewTeamName(e.target.value)}
+                placeholder="Örn: Pazarlama Ekibi"
+                className="bg-white/5 border-white/10"
+              />
+            </div>
+            <div>
+              <Label htmlFor="team-desc">Açıklama (Opsiyonel)</Label>
+              <Input
+                id="team-desc"
+                value={newTeamDesc}
+                onChange={(e) => setNewTeamDesc(e.target.value)}
+                placeholder="Takım açıklaması"
+                className="bg-white/5 border-white/10"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowCreateTeamModal(false)}>İptal</Button>
+            <Button onClick={handleCreateTeam} className="bg-blue-600 hover:bg-blue-700">Oluştur</Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 

@@ -399,6 +399,342 @@ class SanoTrackingAPITester:
             self.log_test("Competitor Benchmark", False, str(e))
             return False
 
+    # ========== NEW FEATURE TESTS ==========
+    
+    def test_batch_upload(self):
+        """Test batch upload endpoint"""
+        try:
+            # Create 3 test images
+            files_list = []
+            for i in range(3):
+                img_base64 = self.create_test_image()
+                files_list.append(('files', (f'batch_test_{i}.png', base64.b64decode(img_base64), 'image/png')))
+            
+            print("🔄 Testing batch upload with 3 images (this may take 60-90 seconds)...")
+            response = requests.post(f"{self.api_url}/analyze-batch", files=files_list, timeout=180)
+            
+            success = response.status_code == 200
+            
+            if success:
+                data = response.json()
+                
+                # Verify required fields
+                required_fields = ['successful', 'failed', 'total', 'success_count', 'fail_count']
+                missing_fields = [field for field in required_fields if field not in data]
+                
+                if missing_fields:
+                    success = False
+                    details = f"Missing fields: {missing_fields}"
+                else:
+                    # Verify counts
+                    total_valid = data['total'] == 3
+                    success_valid = data['success_count'] >= 0
+                    fail_valid = data['fail_count'] >= 0
+                    sum_valid = data['success_count'] + data['fail_count'] == data['total']
+                    
+                    if not all([total_valid, success_valid, fail_valid, sum_valid]):
+                        success = False
+                        details = f"Invalid counts: total={data['total']}, success={data['success_count']}, fail={data['fail_count']}"
+                    else:
+                        details = f"Total: {data['total']}, Success: {data['success_count']}, Failed: {data['fail_count']}"
+            else:
+                details = f"Status: {response.status_code}, Response: {response.text[:200]}"
+                
+            self.log_test("Batch Upload", success, details)
+            return success
+            
+        except Exception as e:
+            self.log_test("Batch Upload", False, str(e))
+            return False
+
+    def test_trends_endpoint(self):
+        """Test trends endpoint"""
+        try:
+            response = requests.get(f"{self.api_url}/trends", timeout=10)
+            
+            success = response.status_code == 200
+            
+            if success:
+                data = response.json()
+                
+                # Verify required fields
+                required_fields = ['data_points', 'overall_trend', 'avg_improvement', 'total_analyses']
+                missing_fields = [field for field in required_fields if field not in data]
+                
+                if missing_fields:
+                    success = False
+                    details = f"Missing fields: {missing_fields}"
+                else:
+                    # Verify data_points is a list
+                    data_points_valid = isinstance(data['data_points'], list)
+                    
+                    # Verify overall_trend is valid
+                    trend_valid = data['overall_trend'] in ['improving', 'declining', 'stable']
+                    
+                    # Verify total_analyses is a number
+                    total_valid = isinstance(data['total_analyses'], int) and data['total_analyses'] >= 0
+                    
+                    if not all([data_points_valid, trend_valid, total_valid]):
+                        success = False
+                        details = f"Invalid data: data_points={data_points_valid}, trend={trend_valid}, total={total_valid}"
+                    else:
+                        details = f"Trend: {data['overall_trend']}, Improvement: {data['avg_improvement']}, Total: {data['total_analyses']}, Data Points: {len(data['data_points'])}"
+            else:
+                details = f"Status: {response.status_code}, Response: {response.text[:200]}"
+                
+            self.log_test("Trends Endpoint", success, details)
+            return success
+            
+        except Exception as e:
+            self.log_test("Trends Endpoint", False, str(e))
+            return False
+
+    def test_stats_endpoint(self):
+        """Test stats endpoint"""
+        try:
+            response = requests.get(f"{self.api_url}/stats", timeout=10)
+            
+            success = response.status_code == 200
+            
+            if success:
+                data = response.json()
+                
+                # Verify required fields
+                required_fields = ['total_analyses', 'distribution', 'averages']
+                missing_fields = [field for field in required_fields if field not in data]
+                
+                if missing_fields:
+                    success = False
+                    details = f"Missing fields: {missing_fields}"
+                else:
+                    # Verify distribution has required keys
+                    dist_keys = ['critical', 'borderline', 'successful', 'excellent']
+                    dist_valid = all(key in data['distribution'] for key in dist_keys)
+                    
+                    # Verify averages has required keys
+                    avg_keys = ['sano_score', 'trust_factor', 'regulatory', 'cta_focus']
+                    avg_valid = all(key in data['averages'] for key in avg_keys)
+                    
+                    if not all([dist_valid, avg_valid]):
+                        success = False
+                        details = f"Invalid structure: distribution={dist_valid}, averages={avg_valid}"
+                    else:
+                        details = f"Total: {data['total_analyses']}, Avg Score: {data['averages']['sano_score']}, Excellent: {data['distribution']['excellent']}"
+            else:
+                details = f"Status: {response.status_code}, Response: {response.text[:200]}"
+                
+            self.log_test("Stats Endpoint", success, details)
+            return success
+            
+        except Exception as e:
+            self.log_test("Stats Endpoint", False, str(e))
+            return False
+
+    def test_create_team(self):
+        """Test creating a team"""
+        try:
+            payload = {
+                "name": "Test Team",
+                "description": "A test team for API testing"
+            }
+            
+            response = requests.post(f"{self.api_url}/teams", json=payload, timeout=10)
+            
+            success = response.status_code == 200
+            
+            if success:
+                data = response.json()
+                
+                # Verify required fields
+                required_fields = ['id', 'name', 'message']
+                missing_fields = [field for field in required_fields if field not in data]
+                
+                if missing_fields:
+                    success = False
+                    details = f"Missing fields: {missing_fields}"
+                else:
+                    # Store team ID for later tests
+                    self.team_id = data['id']
+                    details = f"Team created with ID: {data['id'][:8]}..., Name: {data['name']}"
+            else:
+                details = f"Status: {response.status_code}, Response: {response.text[:200]}"
+                
+            self.log_test("Create Team", success, details)
+            return success
+            
+        except Exception as e:
+            self.log_test("Create Team", False, str(e))
+            return False
+
+    def test_get_teams(self):
+        """Test getting all teams"""
+        try:
+            response = requests.get(f"{self.api_url}/teams", timeout=10)
+            
+            success = response.status_code == 200
+            
+            if success:
+                data = response.json()
+                
+                # Verify it's a list
+                list_valid = isinstance(data, list)
+                
+                if not list_valid:
+                    success = False
+                    details = "Response is not a list"
+                else:
+                    details = f"Teams count: {len(data)}"
+            else:
+                details = f"Status: {response.status_code}, Response: {response.text[:200]}"
+                
+            self.log_test("Get Teams", success, details)
+            return success
+            
+        except Exception as e:
+            self.log_test("Get Teams", False, str(e))
+            return False
+
+    def test_add_team_member(self):
+        """Test adding a member to a team"""
+        if not hasattr(self, 'team_id'):
+            self.log_test("Add Team Member", False, "No team ID available")
+            return False
+            
+        try:
+            payload = {
+                "name": "Test Member",
+                "email": "test@example.com",
+                "role": "viewer"
+            }
+            
+            response = requests.post(f"{self.api_url}/teams/{self.team_id}/members", json=payload, timeout=10)
+            
+            success = response.status_code == 200
+            
+            if success:
+                data = response.json()
+                
+                # Verify required fields
+                required_fields = ['message', 'member']
+                missing_fields = [field for field in required_fields if field not in data]
+                
+                if missing_fields:
+                    success = False
+                    details = f"Missing fields: {missing_fields}"
+                else:
+                    # Store member ID for later tests
+                    self.member_id = data['member']['id']
+                    details = f"Member added: {data['member']['name']}, Role: {data['member']['role']}"
+            else:
+                details = f"Status: {response.status_code}, Response: {response.text[:200]}"
+                
+            self.log_test("Add Team Member", success, details)
+            return success
+            
+        except Exception as e:
+            self.log_test("Add Team Member", False, str(e))
+            return False
+
+    def test_share_analyses_with_team(self):
+        """Test sharing analyses with a team"""
+        if not hasattr(self, 'team_id') or not self.analysis_id_a:
+            self.log_test("Share Analyses with Team", False, "Missing team ID or analysis ID")
+            return False
+            
+        try:
+            payload = {
+                "analysis_ids": [self.analysis_id_a]
+            }
+            
+            response = requests.post(f"{self.api_url}/teams/{self.team_id}/share", json=payload, timeout=10)
+            
+            success = response.status_code == 200
+            
+            if success:
+                data = response.json()
+                
+                # Verify message field
+                message_valid = 'message' in data
+                
+                if not message_valid:
+                    success = False
+                    details = "Missing message field"
+                else:
+                    details = f"Message: {data['message']}"
+            else:
+                details = f"Status: {response.status_code}, Response: {response.text[:200]}"
+                
+            self.log_test("Share Analyses with Team", success, details)
+            return success
+            
+        except Exception as e:
+            self.log_test("Share Analyses with Team", False, str(e))
+            return False
+
+    def test_get_team_analyses(self):
+        """Test getting analyses shared with a team"""
+        if not hasattr(self, 'team_id'):
+            self.log_test("Get Team Analyses", False, "No team ID available")
+            return False
+            
+        try:
+            response = requests.get(f"{self.api_url}/teams/{self.team_id}/analyses", timeout=10)
+            
+            success = response.status_code == 200
+            
+            if success:
+                data = response.json()
+                
+                # Verify it's a list
+                list_valid = isinstance(data, list)
+                
+                if not list_valid:
+                    success = False
+                    details = "Response is not a list"
+                else:
+                    details = f"Shared analyses count: {len(data)}"
+            else:
+                details = f"Status: {response.status_code}, Response: {response.text[:200]}"
+                
+            self.log_test("Get Team Analyses", success, details)
+            return success
+            
+        except Exception as e:
+            self.log_test("Get Team Analyses", False, str(e))
+            return False
+
+    def test_delete_team(self):
+        """Test deleting a team"""
+        if not hasattr(self, 'team_id'):
+            self.log_test("Delete Team", False, "No team ID available")
+            return False
+            
+        try:
+            response = requests.delete(f"{self.api_url}/teams/{self.team_id}", timeout=10)
+            
+            success = response.status_code == 200
+            
+            if success:
+                data = response.json()
+                
+                # Verify message field
+                message_valid = 'message' in data
+                
+                if not message_valid:
+                    success = False
+                    details = "Missing message field"
+                else:
+                    details = f"Message: {data['message']}"
+            else:
+                details = f"Status: {response.status_code}, Response: {response.text[:200]}"
+                
+            self.log_test("Delete Team", success, details)
+            return success
+            
+        except Exception as e:
+            self.log_test("Delete Team", False, str(e))
+            return False
+
     def run_all_tests(self):
         """Run all backend tests"""
         print("🧪 Starting SanoTracking.AI Backend API Tests")
@@ -414,11 +750,21 @@ class SanoTrackingAPITester:
             self.test_history_endpoint_with_data,
             self.test_delete_analysis,
             self.test_invalid_endpoints,
-            # New A/B Test and Competitor Benchmark tests
+            # A/B Test and Competitor Benchmark tests
             lambda: self.test_create_analysis_for_ab("A"),
             lambda: self.test_create_analysis_for_ab("B"),
             self.test_ab_comparison,
-            self.test_competitor_benchmark
+            self.test_competitor_benchmark,
+            # NEW FEATURE TESTS
+            self.test_batch_upload,
+            self.test_trends_endpoint,
+            self.test_stats_endpoint,
+            self.test_create_team,
+            self.test_get_teams,
+            self.test_add_team_member,
+            self.test_share_analyses_with_team,
+            self.test_get_team_analyses,
+            self.test_delete_team
         ]
         
         for test in tests:

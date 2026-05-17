@@ -546,6 +546,360 @@ async def get_competitor_benchmark(analysis_id: str):
         summary=summary
     )
 
+# ===========================================
+# BATCH UPLOAD ENDPOINTS
+# ===========================================
+
+class BatchAnalysisRequest(BaseModel):
+    skip_visuals: bool = False  # Skip heat map/saliency for faster processing
+
+class BatchAnalysisProgress(BaseModel):
+    total: int
+    completed: int
+    current_file: str
+    status: str
+
+class BatchAnalysisResult(BaseModel):
+    successful: List[dict]
+    failed: List[dict]
+    total: int
+    success_count: int
+    fail_count: int
+
+@api_router.post("/analyze-batch", response_model=BatchAnalysisResult)
+async def analyze_batch(files: List[UploadFile] = File(...)):
+    """Analyze multiple pharmaceutical advertisement images"""
+    successful = []
+    failed = []
+    
+    for file in files:
+        try:
+            # Read and encode image
+            contents = await file.read()
+            image_base64 = base64.b64encode(contents).decode('utf-8')
+            
+            # Analyze image with Gemini 3 Flash
+            analysis = await analyze_pharmaceutical_image(image_base64)
+            
+            # Skip visual generation for batch (faster processing)
+            sano_score = analysis.get('sano_score', 55)
+            score_tier = get_score_tier(sano_score)
+            
+            # Create result
+            result = AnalysisResult(
+                image_name=file.filename or "uploaded_image",
+                image_base64=image_base64,
+                sano_score=sano_score,
+                score_tier=score_tier,
+                trust_factor=analysis.get('trust_factor', 60),
+                regulatory_visibility=analysis.get('regulatory_visibility', 50),
+                cta_focus=analysis.get('cta_focus', 55),
+                ttff_medical_claims=analysis.get('ttff_medical_claims', 2.5),
+                aoi_brand_vs_visual=analysis.get('aoi_brand_vs_visual', 'Marka %40, Görsel %60'),
+                cognitive_load=analysis.get('cognitive_load', 'Orta'),
+                heat_map_base64=None,
+                saliency_mask_base64=None,
+                before_analysis=analysis.get('before_analysis', ''),
+                after_recommendations=analysis.get('after_recommendations', ''),
+                benchmark_comparison=analysis.get('benchmark_comparison', ''),
+                doz_artirimi=analysis.get('doz_artirimi', []),
+                yan_etkiler=analysis.get('yan_etkiler', []),
+                tedavi_plani=analysis.get('tedavi_plani', [])
+            )
+            
+            # Save to database
+            doc = result.model_dump()
+            doc['created_at'] = doc['created_at'].isoformat()
+            await db.analyses.insert_one(doc)
+            
+            successful.append({
+                "id": result.id,
+                "image_name": result.image_name,
+                "sano_score": result.sano_score,
+                "score_tier": result.score_tier
+            })
+            
+        except Exception as e:
+            logger.error(f"Error analyzing {file.filename}: {str(e)}")
+            failed.append({
+                "image_name": file.filename,
+                "error": str(e)
+            })
+    
+    return BatchAnalysisResult(
+        successful=successful,
+        failed=failed,
+        total=len(files),
+        success_count=len(successful),
+        fail_count=len(failed)
+    )
+
+# ===========================================
+# TREND DATA ENDPOINTS
+# ===========================================
+
+class TrendDataPoint(BaseModel):
+    date: str
+    avg_score: float
+    count: int
+    max_score: int
+    min_score: int
+
+class TrendResponse(BaseModel):
+    data_points: List[TrendDataPoint]
+    overall_trend: str  # "improving", "declining", "stable"
+    avg_improvement: float
+    total_analyses: int
+
+@api_router.get("/trends", response_model=TrendResponse)
+async def get_trend_data():
+    """Get historical trend data for analyses"""
+    # Aggregate by date
+    pipeline = [
+        {
+            "$addFields": {
+                "date_parsed": {"$dateFromString": {"dateString": "$created_at"}}
+            }
+        },
+        {
+            "$group": {
+                "_id": {"$dateToString": {"format": "%Y-%m-%d", "date": "$date_parsed"}},
+                "avg_score": {"$avg": "$sano_score"},
+                "count": {"$sum": 1},
+                "max_score": {"$max": "$sano_score"},
+                "min_score": {"$min": "$sano_score"}
+            }
+        },
+        {"$sort": {"_id": 1}},
+        {"$limit": 30}  # Last 30 days
+    ]
+    
+    results = await db.analyses.aggregate(pipeline).to_list(30)
+    
+    data_points = [
+        TrendDataPoint(
+            date=r['_id'],
+            avg_score=round(r['avg_score'], 1),
+            count=r['count'],
+            max_score=r['max_score'],
+            min_score=r['min_score']
+        )
+        for r in results
+    ]
+    
+    # Calculate trend
+    total_analyses = sum(dp.count for dp in data_points)
+    
+    if len(data_points) >= 2:
+        first_half = data_points[:len(data_points)//2]
+        second_half = data_points[len(data_points)//2:]
+        
+        first_avg = sum(dp.avg_score for dp in first_half) / len(first_half) if first_half else 0
+        second_avg = sum(dp.avg_score for dp in second_half) / len(second_half) if second_half else 0
+        
+        improvement = second_avg - first_avg
+        
+        if improvement > 3:
+            trend = "improving"
+        elif improvement < -3:
+            trend = "declining"
+        else:
+            trend = "stable"
+    else:
+        trend = "stable"
+        improvement = 0
+    
+    return TrendResponse(
+        data_points=data_points,
+        overall_trend=trend,
+        avg_improvement=round(improvement, 1),
+        total_analyses=total_analyses
+    )
+
+class ScoreDistribution(BaseModel):
+    critical: int  # 0-40
+    borderline: int  # 41-60
+    successful: int  # 61-80
+    excellent: int  # 81-100
+
+@api_router.get("/stats", response_model=dict)
+async def get_stats():
+    """Get overall statistics"""
+    total = await db.analyses.count_documents({})
+    
+    # Score distribution
+    critical = await db.analyses.count_documents({"sano_score": {"$lte": 40}})
+    borderline = await db.analyses.count_documents({"sano_score": {"$gt": 40, "$lte": 60}})
+    successful = await db.analyses.count_documents({"sano_score": {"$gt": 60, "$lte": 80}})
+    excellent = await db.analyses.count_documents({"sano_score": {"$gt": 80}})
+    
+    # Average scores
+    avg_pipeline = [
+        {
+            "$group": {
+                "_id": None,
+                "avg_score": {"$avg": "$sano_score"},
+                "avg_trust": {"$avg": "$trust_factor"},
+                "avg_regulatory": {"$avg": "$regulatory_visibility"},
+                "avg_cta": {"$avg": "$cta_focus"}
+            }
+        }
+    ]
+    avg_result = await db.analyses.aggregate(avg_pipeline).to_list(1)
+    
+    averages = avg_result[0] if avg_result else {
+        "avg_score": 0, "avg_trust": 0, "avg_regulatory": 0, "avg_cta": 0
+    }
+    
+    return {
+        "total_analyses": total,
+        "distribution": {
+            "critical": critical,
+            "borderline": borderline,
+            "successful": successful,
+            "excellent": excellent
+        },
+        "averages": {
+            "sano_score": round(averages.get("avg_score", 0), 1),
+            "trust_factor": round(averages.get("avg_trust", 0), 1),
+            "regulatory": round(averages.get("avg_regulatory", 0), 1),
+            "cta_focus": round(averages.get("avg_cta", 0), 1)
+        }
+    }
+
+# ===========================================
+# TEAM SHARING ENDPOINTS
+# ===========================================
+
+class TeamMember(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    name: str
+    email: str
+    role: str = "viewer"  # viewer, editor, admin
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class Team(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    name: str
+    description: str = ""
+    members: List[dict] = []
+    shared_analyses: List[str] = []
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class CreateTeamRequest(BaseModel):
+    name: str
+    description: str = ""
+
+class AddMemberRequest(BaseModel):
+    name: str
+    email: str
+    role: str = "viewer"
+
+class ShareAnalysisRequest(BaseModel):
+    analysis_ids: List[str]
+
+@api_router.post("/teams")
+async def create_team(request: CreateTeamRequest):
+    """Create a new team"""
+    team = Team(
+        name=request.name,
+        description=request.description
+    )
+    
+    doc = team.model_dump()
+    doc['created_at'] = doc['created_at'].isoformat()
+    await db.teams.insert_one(doc)
+    
+    return {"id": team.id, "name": team.name, "message": "Takım oluşturuldu"}
+
+@api_router.get("/teams")
+async def get_teams():
+    """Get all teams"""
+    teams = await db.teams.find({}, {"_id": 0}).to_list(50)
+    return teams
+
+@api_router.get("/teams/{team_id}")
+async def get_team(team_id: str):
+    """Get a specific team"""
+    team = await db.teams.find_one({"id": team_id}, {"_id": 0})
+    if not team:
+        raise HTTPException(status_code=404, detail="Takım bulunamadı")
+    return team
+
+@api_router.post("/teams/{team_id}/members")
+async def add_team_member(team_id: str, request: AddMemberRequest):
+    """Add a member to a team"""
+    team = await db.teams.find_one({"id": team_id})
+    if not team:
+        raise HTTPException(status_code=404, detail="Takım bulunamadı")
+    
+    member = {
+        "id": str(uuid.uuid4()),
+        "name": request.name,
+        "email": request.email,
+        "role": request.role,
+        "added_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    await db.teams.update_one(
+        {"id": team_id},
+        {"$push": {"members": member}}
+    )
+    
+    return {"message": "Üye eklendi", "member": member}
+
+@api_router.delete("/teams/{team_id}/members/{member_id}")
+async def remove_team_member(team_id: str, member_id: str):
+    """Remove a member from a team"""
+    result = await db.teams.update_one(
+        {"id": team_id},
+        {"$pull": {"members": {"id": member_id}}}
+    )
+    
+    if result.modified_count == 0:
+        raise HTTPException(status_code=404, detail="Üye bulunamadı")
+    
+    return {"message": "Üye kaldırıldı"}
+
+@api_router.post("/teams/{team_id}/share")
+async def share_analyses_with_team(team_id: str, request: ShareAnalysisRequest):
+    """Share analyses with a team"""
+    team = await db.teams.find_one({"id": team_id})
+    if not team:
+        raise HTTPException(status_code=404, detail="Takım bulunamadı")
+    
+    # Add analysis IDs to team's shared list
+    await db.teams.update_one(
+        {"id": team_id},
+        {"$addToSet": {"shared_analyses": {"$each": request.analysis_ids}}}
+    )
+    
+    return {"message": f"{len(request.analysis_ids)} analiz paylaşıldı"}
+
+@api_router.get("/teams/{team_id}/analyses")
+async def get_team_analyses(team_id: str):
+    """Get all analyses shared with a team"""
+    team = await db.teams.find_one({"id": team_id}, {"_id": 0})
+    if not team:
+        raise HTTPException(status_code=404, detail="Takım bulunamadı")
+    
+    shared_ids = team.get("shared_analyses", [])
+    
+    analyses = await db.analyses.find(
+        {"id": {"$in": shared_ids}},
+        {"_id": 0, "image_base64": 0, "heat_map_base64": 0, "saliency_mask_base64": 0}
+    ).to_list(100)
+    
+    return analyses
+
+@api_router.delete("/teams/{team_id}")
+async def delete_team(team_id: str):
+    """Delete a team"""
+    result = await db.teams.delete_one({"id": team_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Takım bulunamadı")
+    return {"message": "Takım silindi"}
+
 # Include the router in the main app
 app.include_router(api_router)
 
