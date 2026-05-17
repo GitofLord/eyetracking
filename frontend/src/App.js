@@ -1047,8 +1047,25 @@ function App() {
       </AnimatePresence>
 
       {/* Hero Section */}
-      <header className="relative hero-glow pt-8 pb-12 px-4">
-        <div className="max-w-7xl mx-auto text-center">
+      <header className="relative hero-glow pt-8 pb-12 px-4 overflow-hidden min-h-[220px]">
+        {/* Background Image with Gradient Overlay - Right Side */}
+        <div className="absolute top-0 right-0 w-[800px] h-full pointer-events-none">
+          <div 
+            className="absolute inset-0 bg-cover bg-right-top bg-no-repeat"
+            style={{
+              backgroundImage: `url('https://images.unsplash.com/photo-1582719471384-894fbb16e074?crop=entropy&cs=srgb&fm=jpg&ixlib=rb-4.1.0&q=85&w=1200')`,
+              opacity: 0.45,
+              filter: 'saturate(0.7)',
+            }}
+          />
+          {/* Gradient overlays for smooth blending */}
+          <div className="absolute inset-0 bg-gradient-to-r from-[#020408] via-[#020408]/90 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-t from-[#020408] via-transparent to-[#020408]/50" />
+          {/* Cyan tint overlay */}
+          <div className="absolute inset-0 bg-[#0EA5E9]/10 mix-blend-overlay" />
+        </div>
+        
+        <div className="max-w-7xl mx-auto text-center relative z-10">
           <motion.div
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
