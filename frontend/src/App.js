@@ -1047,7 +1047,7 @@ function App() {
                   Görsel Yükle
                 </CardTitle>
                 <CardDescription>
-                  İlaç reklamı veya HCP materyali yükleyin
+                  Ürününüze ait broşür ya da tasarımın görselini yükleyin
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -1561,21 +1561,21 @@ function App() {
             {result ? (
               <>
                 <RecommendationCard 
-                  title="💊 Doz Artırımı"
+                  title="✅ Neler iyi yapılmış?"
                   icon={<CheckCircle2 className="w-5 h-5" />}
                   items={result.doz_artirimi}
                   colorClass="text-green-500"
                 />
                 
                 <RecommendationCard 
-                  title="⚠️ Yan Etkiler"
+                  title="⚠️ Neler çok iyi görünmüyor?"
                   icon={<AlertTriangle className="w-5 h-5" />}
                   items={result.yan_etkiler}
                   colorClass="text-red-500"
                 />
                 
                 <RecommendationCard 
-                  title="🧪 Tedavi Planı"
+                  title="💡 Ne öneririm?"
                   icon={<Zap className="w-5 h-5" />}
                   items={result.tedavi_plani}
                   colorClass="text-[#0EA5E9]"
