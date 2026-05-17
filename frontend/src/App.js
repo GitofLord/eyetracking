@@ -1046,23 +1046,21 @@ function App() {
         {isAnalyzing && <LoadingAnimation progress={analysisProgress} />}
       </AnimatePresence>
 
-      {/* Hero Section */}
-      <header className="relative hero-glow pt-8 pb-12 px-4 overflow-hidden min-h-[220px]">
-        {/* Background Image with Gradient Overlay - Right Side */}
-        <div className="absolute top-0 right-0 w-[800px] h-full pointer-events-none">
+      {/* Hero Section with Full Width Eye Tracking Heatmap Background */}
+      <header className="relative pt-8 pb-12 px-4 overflow-hidden min-h-[240px]">
+        {/* Full Width Background Image - Eye Tracking Heatmap Style */}
+        <div className="absolute inset-0 pointer-events-none">
           <div 
-            className="absolute inset-0 bg-cover bg-right-top bg-no-repeat"
+            className="absolute inset-0 bg-cover bg-center bg-no-repeat"
             style={{
-              backgroundImage: `url('https://images.unsplash.com/photo-1582719471384-894fbb16e074?crop=entropy&cs=srgb&fm=jpg&ixlib=rb-4.1.0&q=85&w=1200')`,
-              opacity: 0.45,
-              filter: 'saturate(0.7)',
+              backgroundImage: `url('https://images.unsplash.com/photo-1774998700432-6275ace32249?crop=entropy&cs=srgb&fm=jpg&ixlib=rb-4.1.0&q=85&w=1920')`,
+              opacity: 0.5,
             }}
           />
-          {/* Gradient overlays for smooth blending */}
-          <div className="absolute inset-0 bg-gradient-to-r from-[#020408] via-[#020408]/90 to-transparent" />
-          <div className="absolute inset-0 bg-gradient-to-t from-[#020408] via-transparent to-[#020408]/50" />
-          {/* Cyan tint overlay */}
-          <div className="absolute inset-0 bg-[#0EA5E9]/10 mix-blend-overlay" />
+          {/* Dark overlay for readability */}
+          <div className="absolute inset-0 bg-[#020408]/50" />
+          {/* Gradient overlays - bottom fade */}
+          <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-[#020408]" />
         </div>
         
         <div className="max-w-7xl mx-auto text-center relative z-10">
