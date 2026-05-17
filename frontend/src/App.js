@@ -61,6 +61,82 @@ import { LineChart as RechartsLineChart, Line, XAxis, YAxis, CartesianGrid, Tool
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 
+// Custom Brain with Curious Eyes Logo Component
+const BrainEyesLogo = ({ className }) => (
+  <svg 
+    viewBox="0 0 64 64" 
+    className={className}
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    {/* Brain background glow */}
+    <ellipse cx="32" cy="34" rx="22" ry="20" fill="#0EA5E9" fillOpacity="0.15"/>
+    
+    {/* Brain outline */}
+    <path
+      d="M32 10C18 10 10 20 10 32C10 44 18 54 32 54C46 54 54 44 54 32C54 20 46 10 32 10Z"
+      stroke="#0EA5E9"
+      strokeWidth="2.5"
+      fill="none"
+    />
+    
+    {/* Brain top bumps */}
+    <path
+      d="M20 18C22 14 28 12 32 12C36 12 42 14 44 18"
+      stroke="#0EA5E9"
+      strokeWidth="2"
+      strokeLinecap="round"
+    />
+    
+    {/* Brain wrinkle top */}
+    <path
+      d="M18 26C24 24 32 24 38 26C44 24 48 26 50 28"
+      stroke="#0EA5E9"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+    />
+    
+    {/* Brain wrinkle bottom */}
+    <path
+      d="M16 42C22 40 28 42 32 40C36 42 42 40 48 42"
+      stroke="#0EA5E9"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+    />
+    
+    {/* Left Eye - big curious eye */}
+    <ellipse cx="24" cy="34" rx="7" ry="8" fill="#0B101B" stroke="#0EA5E9" strokeWidth="2"/>
+    <circle cx="24" cy="34" r="5" fill="white"/>
+    <circle cx="25" cy="33" r="3" fill="#0EA5E9"/>
+    <circle cx="26.5" cy="31.5" r="1.2" fill="white"/>
+    
+    {/* Right Eye - big curious eye */}
+    <ellipse cx="40" cy="34" rx="7" ry="8" fill="#0B101B" stroke="#0EA5E9" strokeWidth="2"/>
+    <circle cx="40" cy="34" r="5" fill="white"/>
+    <circle cx="41" cy="33" r="3" fill="#0EA5E9"/>
+    <circle cx="42.5" cy="31.5" r="1.2" fill="white"/>
+    
+    {/* Raised eyebrows - curious/interested expression */}
+    <path
+      d="M16 24C18 21 22 20 28 22"
+      stroke="#0EA5E9"
+      strokeWidth="2.5"
+      strokeLinecap="round"
+    />
+    <path
+      d="M36 22C42 20 46 21 48 24"
+      stroke="#0EA5E9"
+      strokeWidth="2.5"
+      strokeLinecap="round"
+    />
+    
+    {/* Sparkle - curiosity/insight indicator */}
+    <circle cx="52" cy="14" r="2.5" fill="#10B981"/>
+    <circle cx="56" cy="18" r="1.5" fill="#10B981" fillOpacity="0.7"/>
+    <circle cx="54" cy="22" r="1" fill="#10B981" fillOpacity="0.5"/>
+  </svg>
+);
+
 // Eye Tracking Terms & KPIs Content
 const EYE_TRACKING_CONTENT = {
   title: "Göz Takibi & Nöromarketing Terimler Sözlüğü",
@@ -978,8 +1054,8 @@ function App() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
           >
-            <div className="flex items-center justify-center gap-3 mb-4">
-              <BrainCircuit className="w-10 h-10 text-[#0EA5E9]" />
+            <div className="flex items-center justify-center gap-4 mb-4">
+              <BrainEyesLogo className="w-14 h-14" />
               <h1 className="text-4xl md:text-5xl font-extrabold text-white tracking-tight">
                 Sano<span className="text-[#0EA5E9]">Tracking</span>.AI
               </h1>
